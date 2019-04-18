@@ -1,0 +1,7 @@
+# PostgreSQL
+# ------------------------------------------------------------------------------
+POSTGRES_HOST=postgres
+POSTGRES_PORT=5432
+POSTGRES_DB=ciconia
+POSTGRES_USER=oWEPTIIpWxbreQIeTgemLERaDrhcxtXP
+POSTGRES_PASSWORD=FuiQykx6aoHXf1lJv6dtw1TLIom4NMixztBhHuDAKxURt46zzuXhwHDunYfQi5xv
