@@ -63,3 +63,4 @@ if env("USE_DOCKER", default="no") == "yes":
 # https://django-extensions.readthedocs.io/en/latest/installation_instructions.html#configuration
 INSTALLED_APPS += ["django_extensions"]  # noqa F405
 
+LOGGING["loggers"][""]["level"] = "DEBUG"

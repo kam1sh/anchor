@@ -220,7 +220,7 @@ LOGGING = {
     "handlers": dict(console={"class": "logging.StreamHandler"}),
     "loggers": {
         "": {
-            "level": "DEBUG" if DEBUG else "INFO",
+            "level": "INFO",
             "handlers": ["console"]
         }
     }
