@@ -3,6 +3,8 @@ Ciconia
 
 Repository for python, debian and other packages with one REST API to rule them all.
 
+**Please advice: right now project in the very early state.**
+
 .. image:: https://img.shields.io/badge/built%20with-Cookiecutter%20Django-ff69b4.svg
      :target: https://github.com/pydanny/cookiecutter-django/
      :alt: Built with Cookiecutter Django
@@ -14,12 +16,19 @@ Repository for python, debian and other packages with one REST API to rule them 
 :License: MIT
 
 
-Settings
---------
+Install
+-------
 
-Moved to settings_.
+Requirements: right now **Python 3.7 only**, the rest is up to you.
 
-.. _settings: http://cookiecutter-django.readthedocs.io/en/latest/settings.html
+Use poetry_:
+
+::
+
+  $ poetry install # just to make it work
+  $ poetry install --dev # with development requirements
+
+.. _poetry: https://github.com/sdispater/poetry
 
 Basic Commands
 --------------
@@ -35,30 +44,23 @@ Setting Up Your Users
 
 For convenience, you can keep your normal user logged in on Chrome and your superuser logged in on Firefox (or similar), so that you can see how the site behaves for both kinds of users.
 
-Type checks
-^^^^^^^^^^^
 
-Running type checks with mypy:
+Tests
+^^^^^
 
 ::
 
+  $ pytest
   $ mypy ciconia
 
-Test coverage
-^^^^^^^^^^^^^
+With coverage:
 
-To run the tests, check your test coverage, and generate an HTML coverage report::
+::
 
     $ coverage run -m pytest
     $ coverage html
     $ open htmlcov/index.html
 
-Running tests with py.test
-~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-::
-
-  $ pytest
 
 Live reloading and Sass CSS compilation
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -67,23 +69,5 @@ Moved to `Live reloading and SASS compilation`_.
 
 .. _`Live reloading and SASS compilation`: http://cookiecutter-django.readthedocs.io/en/latest/live-reloading-and-sass-compilation.html
 
-
-
-
-
-Deployment
-----------
-
-The following details how to deploy this application.
-
-
-
-Docker
-^^^^^^
-
-See detailed `cookiecutter-django Docker documentation`_.
-
-.. _`cookiecutter-django Docker documentation`: http://cookiecutter-django.readthedocs.io/en/latest/deployment-with-docker.html
-
-
+*idk how frontend works*
 
