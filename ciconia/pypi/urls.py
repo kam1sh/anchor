@@ -1,8 +1,9 @@
 from django.urls import include, path
 from django.views.generic import TemplateView
 
-from .views import PackageList
+from . import views
 
 urlpatterns = [
-    path("", PackageList.as_view())
+    path("", views.PackageList.as_view()),
+    path("<str:name>/", views.PackageVersions.as_view())
 ]

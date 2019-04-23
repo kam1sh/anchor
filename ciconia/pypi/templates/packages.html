@@ -3,5 +3,7 @@
 {% block body %}
     {% for package in packages %}
     <a href="/simple/{{ package.name }}">{{ package.name }}</a>
+    {% empty %}
+    <h1>No packages available.</h1>
     {% endfor %}
 {% endblock body %}

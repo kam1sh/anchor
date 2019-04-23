@@ -213,5 +213,15 @@ ADMINS = [("""Igor Ovsyannikov""", "kamish@outlook.com")]
 # https://docs.djangoproject.com/en/dev/ref/settings/#managers
 MANAGERS = ADMINS
 
-# Your stuff...
-# ------------------------------------------------------------------------------
+# https://docs.djangoproject.com/en/2.2/topics/logging/
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": dict(console={"class": "logging.StreamHandler"}),
+    "loggers": {
+        "": {
+            "level": "DEBUG" if DEBUG else "INFO",
+            "handlers": ["console"]
+        }
+    }
+}
