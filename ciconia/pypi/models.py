@@ -1,7 +1,13 @@
+import logging
+import re
+import typing as ty
 import zipfile
 from pathlib import Path
 
 from django.db import models
+from django.core.files import File
+
+log = logging.getLogger(__name__)
 
 
 class PythonPackage(models.Model):
@@ -24,21 +30,73 @@ class PackageFile(models.Model):
     version = models.ForeignKey(PackageVersion, on_delete=models.CASCADE)
     filename = models.CharField(max_length=64)
     pkg_file = models.FileField(upload_to="pypi", name="File itself")
+    pkg_type = models.CharField(max_length=16)
 
     def __init__(self, pkg, filename=None):
         super().__init__()
-        if not self._extract_name(pkg, filename):
+        if not self._extract_name(pkg, filename or ""):
             raise TypeError("Filename not provided")
-        if not hasattr(pkg, "read"):
-            ext = str(pkg).split(".")[-1]
+        self.pkg_file = File(pkg, name=self.filename)
+        pkg.seek(0)
+        self.metadata = self._extract_metadata(pkg)
 
-    def _extract_name(self, pkg, filename) -> str:
-        self.filename = (
-            Path(filename or "").name
-            or getattr(pkg, "name", None)
-            or getattr(pkg, "filename", None)
-        )
+    def _extract_name(self, pkg, filename: str) -> str:
+        self.filename = Path(
+            filename or getattr(pkg, "name", None) or getattr(pkg, "filename", None)
+        ).name
         return self.filename
 
+    def _extract_metadata(self, pkg) -> "WheelMetadata":
+        ext = self.filename.split(".")[-1]
+        if ext == "whl":
+            self.pkg_type = "wheel"
+            return self._unwrap_wheel(pkg)
+        if ext in {"tar", "tar.gz", "tgz"}:
+            self.pkg_type = "tar"
+            raise NotImplementedError()
+        raise ValueError("Could not recognize package format: %s" % ext)
+
     def _unwrap_wheel(self, pkg):
-        zf = zipfile.ZipFile
+        zf = zipfile.ZipFile(pkg)
+        dist_info = {
+            x.name: str(x)
+            for x in map(Path, zf.namelist())
+            if not x.parent.parent.name and x.parent.name.endswith(".dist-info")
+        }
+        with zf.open(dist_info["METADATA"]) as raw:
+            metadata = [x.decode() for x in raw]
+        return WheelMetadata(metadata)
+
+
+class WheelMetadata(dict):
+    """ Case-insensitive dictionary that stores wheel package metadata. """
+
+    _pattern = re.compile(r"^([\w-]+): (.+)$")
+    _continue = re.compile(r"^        (.+)$")
+
+    def __init__(self, lines: ty.Iterable[str]):
+        super().__init__()
+
+        for i, line in enumerate(self._check_description(lines)):
+            match = self._pattern.match(line)
+            if not match:
+                log.warning("could not read metadata at line %s", i + 1)
+                continue
+            key, val = match.groups()
+            log.debug("%s=%s", key, val)
+            self[key] = val
+
+    def _check_description(self, lines):
+        lines_iter = iter(x.rstrip() for x in lines)
+        for line in lines_iter:
+            if not line:
+                # use the same iterator to skip those lines in the next iteration
+                self["description"] = "\n".join(lines_iter)
+                break
+            yield line
+
+    def __setitem__(self, key, value):
+        return super().__setitem__(key.lower(), value)
+
+    def __getitem__(self, key):
+        return super().__getitem__(key.lower())

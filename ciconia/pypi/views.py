@@ -8,7 +8,8 @@ from django import http
 
 from .models import PythonPackage
 
-log = logging.getLogger(__file__)
+log = logging.getLogger(__name__)
+
 
 @method_decorator(csrf.csrf_exempt, name="dispatch")
 class PackageList(generic.ListView):
@@ -18,7 +19,7 @@ class PackageList(generic.ListView):
 
     def get_queryset(self):
         return self.model.objects.all()
-    
+
     def post(self, request: http.HttpRequest):
         ra = request.META["REMOTE_ADDR"]
         cl = request.META["CONTENT_LENGTH"]
@@ -26,11 +27,9 @@ class PackageList(generic.ListView):
         if not pkg:
             m = 'Provide package within "content" file.'
             return http.HttpResponseBadRequest(m)
-        log.debug("Got package: %s", pkg)
+        log.debug("Got package %s from IP %s", pkg, ra)
         return http.HttpResponse("OK!")
+
 
 class PackageVersions(generic.ListView):
     template_name = "versions.html"
-
-
-

@@ -217,11 +217,11 @@ MANAGERS = ADMINS
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
-    "handlers": dict(console={"class": "logging.StreamHandler"}),
+    # "handlers": dict(console={"class": "logging.StreamHandler"}),
     "loggers": {
         "": {
             "level": "INFO",
-            "handlers": ["console"]
+            # "handlers": ["console"]
         }
     }
 }
