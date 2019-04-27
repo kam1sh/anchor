@@ -1,6 +1,12 @@
+import logging
+
 import pytest
-from django.conf import settings
 from django.test import RequestFactory
+
+
+def pytest_configure():
+    # removing StreamHandler to avoid double logging (in stderr and pytest)
+    logging.getLogger("ciconia").handlers = []
 
 
 @pytest.fixture(autouse=True)

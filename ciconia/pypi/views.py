@@ -7,6 +7,7 @@ from django.utils.decorators import method_decorator
 from django import http
 
 from .models import PythonPackage
+from . import models
 
 log = logging.getLogger(__name__)
 
@@ -22,12 +23,14 @@ class PackageList(generic.ListView):
 
     def post(self, request: http.HttpRequest):
         ra = request.META["REMOTE_ADDR"]
-        cl = request.META["CONTENT_LENGTH"]
+        # cl = request.META["CONTENT_LENGTH"] # could be useful in the future
         pkg = request.FILES.get("content")
         if not pkg:
             m = 'Provide package within "content" file.'
             return http.HttpResponseBadRequest(m)
-        log.debug("Got package %s from IP %s", pkg, ra)
+        pf = models.PackageFile(pkg)
+        log.debug("Got package %s from IP %s", pf, ra)
+
         return http.HttpResponse("OK!")
 
 

@@ -47,11 +47,11 @@ class PackageFile(models.Model):
         return self.filename
 
     def _extract_metadata(self, pkg) -> "WheelMetadata":
-        ext = self.filename.split(".")[-1]
-        if ext == "whl":
+        ext = self.filename.split(".")
+        if ext[-1] == "whl":
             self.pkg_type = "wheel"
             return self._unwrap_wheel(pkg)
-        if ext in {"tar", "tar.gz", "tgz"}:
+        if ext[-2:] == ["tar", "gz"]:
             self.pkg_type = "tar"
             raise NotImplementedError()
         raise ValueError("Could not recognize package format: %s" % ext)
@@ -74,10 +74,10 @@ class WheelMetadata(dict):
     _pattern = re.compile(r"^([\w-]+): (.+)$")
     _continue = re.compile(r"^        (.+)$")
 
-    def __init__(self, lines: ty.Iterable[str]):
+    def __init__(self, lines: ty.Iterable[str] = None):
         super().__init__()
 
-        for i, line in enumerate(self._check_description(lines)):
+        for i, line in enumerate(self._check_description(lines or [])):
             match = self._pattern.match(line)
             if not match:
                 log.warning("could not read metadata at line %s", i + 1)

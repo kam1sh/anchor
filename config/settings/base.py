@@ -61,10 +61,7 @@ DJANGO_APPS = [
     # "django.contrib.humanize", # Handy template tags
     "django.contrib.admin",
 ]
-THIRD_PARTY_APPS = [
-    "crispy_forms",
-    "rest_framework",
-]
+THIRD_PARTY_APPS = ["crispy_forms", "rest_framework"]
 LOCAL_APPS = [
     "ciconia.users.apps.UsersAppConfig",
     "ciconia.pypi.apps.PypiConfig",
@@ -81,9 +78,7 @@ MIGRATION_MODULES = {"sites": "ciconia.contrib.sites.migrations"}
 # AUTHENTICATION
 # ------------------------------------------------------------------------------
 # https://docs.djangoproject.com/en/dev/ref/settings/#authentication-backends
-AUTHENTICATION_BACKENDS = [
-    "django.contrib.auth.backends.ModelBackend",
-]
+AUTHENTICATION_BACKENDS = ["django.contrib.auth.backends.ModelBackend"]
 # https://docs.djangoproject.com/en/dev/ref/settings/#auth-user-model
 AUTH_USER_MODEL = "users.User"
 # https://docs.djangoproject.com/en/dev/ref/settings/#login-redirect-url
@@ -217,11 +212,9 @@ MANAGERS = ADMINS
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
-    # "handlers": dict(console={"class": "logging.StreamHandler"}),
-    "loggers": {
-        "": {
-            "level": "INFO",
-            # "handlers": ["console"]
-        }
-    }
+    "formatters": {
+        "verbose": {"format": "%(asctime)s %(name)s [%(funcName)s] %(message)s"}
+    },
+    "handlers": {"console": {"class": "logging.StreamHandler", "formatter": "verbose"}},
+    "loggers": {"ciconia": {"level": "DEBUG", "handlers": ["console"]}},
 }
