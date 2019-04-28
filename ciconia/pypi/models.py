@@ -1,11 +1,13 @@
+import gzip
 import logging
 import re
+import tarfile
 import typing as ty
 import zipfile
 from pathlib import Path
 
-from django.db import models
 from django.core.files import File
+from django.db import models
 
 log = logging.getLogger(__name__)
 
@@ -50,32 +52,22 @@ class PackageFile(models.Model):
         ext = self.filename.split(".")
         if ext[-1] == "whl":
             self.pkg_type = "wheel"
-            return self._unwrap_wheel(pkg)
+            return WheelInfo(pkg)
         if ext[-2:] == ["tar", "gz"]:
             self.pkg_type = "tar"
-            raise NotImplementedError()
+            return SdistInfo(pkg)
         raise ValueError("Could not recognize package format: %s" % ext)
 
-    def _unwrap_wheel(self, pkg):
-        zf = zipfile.ZipFile(pkg)
-        dist_info = {
-            x.name: str(x)
-            for x in map(Path, zf.namelist())
-            if not x.parent.parent.name and x.parent.name.endswith(".dist-info")
-        }
-        with zf.open(dist_info["METADATA"]) as raw:
-            metadata = [x.decode() for x in raw]
-        return WheelMetadata(metadata)
 
-
-class WheelMetadata(dict):
+class WheelInfo(dict):
     """ Case-insensitive dictionary that stores wheel package metadata. """
 
     _pattern = re.compile(r"^([\w-]+): (.+)$")
-    _continue = re.compile(r"^        (.+)$")
 
-    def __init__(self, lines: ty.Iterable[str] = None):
+    def __init__(self, lines: ty.Iterable[bytes] = None):
         super().__init__()
+        if lines:
+            lines = self._prepare_file(lines)
 
         for i, line in enumerate(self._check_description(lines or [])):
             match = self._pattern.match(line)
@@ -86,8 +78,19 @@ class WheelMetadata(dict):
             log.debug("%s=%s", key, val)
             self[key] = val
 
+    def _prepare_file(self, pkg):
+        zf = zipfile.ZipFile(pkg)
+        # all files from .dist-info folder
+        dist_info = {
+            x.name: str(x)
+            for x in map(Path, zf.namelist())
+            if not x.parent.parent.name and x.parent.name.endswith(".dist-info")
+        }
+        with zf.open(dist_info["METADATA"]) as raw:
+            yield from raw
+
     def _check_description(self, lines):
-        lines_iter = iter(x.rstrip() for x in lines)
+        lines_iter = iter(x.decode().rstrip() for x in lines)
         for line in lines_iter:
             if not line:
                 # use the same iterator to skip those lines in the next iteration
@@ -100,3 +103,28 @@ class WheelMetadata(dict):
 
     def __getitem__(self, key):
         return super().__getitem__(key.lower())
+
+
+class SdistInfo(WheelInfo):
+    _continue = re.compile(r"^        (.+)$")
+
+    def _prepare_file(self, pkg):
+        tf = tarfile.open(fileobj=pkg, mode="r:gz")
+        pkg_dir = {
+            x.name: str(x)
+            for x in map(Path, tf.getnames())
+            if not x.parent.parent.parent.name
+        }
+        with tf.extractfile(pkg_dir["PKG-INFO"]) as raw:
+            yield from raw
+
+    def _check_description(self, lines):
+        lines_iter = iter(x.decode().rstrip() for x in lines)
+        desc = []
+        for line in lines_iter:
+            match = self._continue.match(line)
+            if match:
+                desc.append(match.group(1))
+            else:
+                yield line
+        self["description"] = "\n".join(desc)

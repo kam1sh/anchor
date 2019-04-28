@@ -16,4 +16,5 @@ def test_readers(dist):
     assert pkg.metadata
     # print(pkg.metadata["description"])
 
-    assert models.WheelMetadata.fromkeys(pkg.metadata)
+    # assert models.WheelInfo.fromkeys(pkg.metadata)
+    assert False
