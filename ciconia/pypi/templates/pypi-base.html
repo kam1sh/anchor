@@ -1,12 +1,10 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+<html>
+  <head>
     <title>{{ title|default:"Simple index" }}</title>
-</head>
-<body>
+  </head>
+  <body>
     <h1>{{ title|default:"Simple index" }}</h1>
     {% block body %}{% endblock body %}
-</body>
+  </body>
 </html>
