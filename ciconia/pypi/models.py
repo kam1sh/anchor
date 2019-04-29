@@ -1,3 +1,4 @@
+import datetime
 import gzip
 import logging
 import re
@@ -6,7 +7,7 @@ import typing as ty
 import zipfile
 from pathlib import Path
 
-from django.core.files import File
+from django.core import files
 from django.db import models
 
 log = logging.getLogger(__name__)
@@ -17,13 +18,30 @@ class PythonPackage(models.Model):
     version = models.CharField("Latest version", max_length=16)
     updated = models.DateTimeField("Last updated")
     # updated with the new package version
-    info = models.TextField("Package information")
+    info = models.TextField("Package information", null=True)
+
+    def __init__(self, *args, pkg_file=None, pkg_ver=None):
+        super().__init__(*args)
+        if pkg_file:
+            self.name = pkg_file.name
+            self.version = pkg_file.metadata["version"][0]
+        if pkg_ver:
+            self.version = pkg_ver.tag
+        self.updated = self.updated or datetime.datetime.now()
+
+    def __str__(self):
+        return self.name
 
 
 class PackageVersion(models.Model):
     package = models.ForeignKey(PythonPackage, on_delete=models.CASCADE)
     tag = models.CharField(max_length=32)
-    info = models.TextField("Package information")
+    info = models.TextField("Package information", null=True)
+
+    def __init__(self, *args, pkg_file=None):
+        super().__init__(*args)
+        if pkg_file:
+            self.tag = pkg_file.metadata["version"][0]
 
 
 class PackageFile(models.Model):
@@ -31,16 +49,18 @@ class PackageFile(models.Model):
     # could contain multiple files (.tar.gz, .whl etc)
     version = models.ForeignKey(PackageVersion, on_delete=models.CASCADE)
     filename = models.CharField(max_length=64)
-    pkg_file = models.FileField(upload_to="pypi", name="File itself")
+    fileobj = models.FileField(upload_to="pypi")
     pkg_type = models.CharField(max_length=16)
 
-    def __init__(self, pkg, filename=None):
-        super().__init__()
-        if not self._extract_name(pkg, filename or ""):
-            raise TypeError("Filename not provided")
-        self.pkg_file = File(pkg, name=self.filename)
-        pkg.seek(0)
-        self.metadata = self._extract_metadata(pkg)
+    def __init__(self, *args, pkg=None, filename=None):
+        super().__init__(*args)
+        self._metadata = None
+        if pkg:
+            if not self._extract_name(pkg, filename or ""):
+                raise TypeError("Filename not provided")
+            self.fileobj = files.File(pkg, name=self.filename)
+            pkg.seek(0)
+            self._metadata = self._extract_metadata(pkg)
 
     def _extract_name(self, pkg, filename: str) -> str:
         self.filename = Path(
@@ -57,6 +77,24 @@ class PackageFile(models.Model):
             self.pkg_type = "tar"
             return SdistInfo(pkg)
         raise ValueError("Could not recognize package format: %s" % ext)
+
+    @property
+    def metadata(self):
+        if not self._metadata:
+            with self.fileobj.open() as raw:
+                self._metadata = self._extract_metadata(raw)
+        return self._metadata
+
+    @property
+    def name(self):
+        return self.metadata["name"][0]
+
+    @property
+    def version_tag(self):
+        return self.metadata["version"][0]
+
+    def __str__(self):
+        return self.filename
 
 
 class WheelInfo(dict):
@@ -76,7 +114,7 @@ class WheelInfo(dict):
                 continue
             key, val = match.groups()
             log.debug("%s=%s", key, val)
-            self[key] = val
+            self.setdefault(key.lower(), []).append(val)
 
     def _prepare_file(self, pkg):
         zf = zipfile.ZipFile(pkg)
