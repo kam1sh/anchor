@@ -1,9 +1,9 @@
-from django.urls import include, path
-from django.views.generic import TemplateView
+from django.urls import path
 
 from . import views
 
 urlpatterns = [
-    path("", views.PackageList.as_view()),
-    path("<str:name>/", views.files, name="pypi-files"),
+    path("upload/", views.upload_package),
+    path("simple/", views.PackageList.as_view()),
+    path("simple/<str:name>/", views.files, name="pypi.files"),
 ]

@@ -1,3 +1,4 @@
+import hashlib
 import logging
 import re
 import tarfile
@@ -42,6 +43,7 @@ class PackageFile(models.Model):
     filename = models.CharField(max_length=64)
     fileobj = models.FileField(upload_to="pypi")
     pkg_type = models.CharField(max_length=16)
+    sha256 = models.TextField(unique=True)
 
     def __init__(self, *args, pkg=None, filename=None):
         super().__init__(*args)
@@ -49,9 +51,7 @@ class PackageFile(models.Model):
         if pkg:
             if not self._extract_name(pkg, filename or ""):
                 raise TypeError("Filename not provided")
-            self.fileobj = files.File(pkg, name=self.filename)
-            pkg.seek(0)
-            self._metadata = self._extract_metadata(pkg)
+            self.update(pkg)
 
     def _extract_name(self, pkg, filename: str) -> str:
         self.filename = Path(
@@ -75,6 +75,19 @@ class PackageFile(models.Model):
             with self.fileobj.open() as raw:
                 self._metadata = self._extract_metadata(raw)
         return self._metadata
+
+    def update(self, src):
+        self.fileobj = files.File(src, name=self.filename)
+        src.seek(0)
+        self._metadata = self._extract_metadata(src)
+        self._update_sha256(src)
+
+    def _update_sha256(self, src=None) -> str:
+        m = hashlib.sha256()
+        for chunk in iter(lambda: src.read(2 ** 10), b""):
+            m.update(chunk)
+        self.sha256 = m.hexdigest()
+        return self.sha256
 
     def __getattr__(self, key: str):
         """

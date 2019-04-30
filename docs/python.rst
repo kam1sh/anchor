@@ -4,67 +4,61 @@ Python package index
 Protocol overview
 -----------------
 
-Python package index protocol describen in the next PEPs:
-
-* Module upload mechanism: PEP 243 https://www.python.org/dev/peps/pep-0243/
-* Simple API: PEP 503 https://www.python.org/dev/peps/pep-0503/
-* Version identification: PEP 440 https://www.python.org/dev/peps/pep-0440/
+Python packaging has a few API:
 
 
-So, basically, to make package index you have to
-implement a few HTTP endpoints:
+Simple API
+^^^^^^^^^^
 
-GET /
-^^^^^
-This operation should return simple HTML page
-with the list of available packages and links to pages with available files.
-For example, response of GET https://pypi.org/simple/::
+PEP 503_ describes *simple* API fith a few operations:
 
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <title>Simple index</title>
-    </head>
-    <body>
-        <a href="/simple/0/">0</a>
-        <a href="/simple/0-0/">0-._.-._.-._.-._.-._.-._.-0</a>
-        <a href="/simple/0-0-1/">0.0.1</a>
-        <a href="/simple/00print-lol/">00print_lol</a>
-        <a href="/simple/00smalinux/">00SMALINUX</a>
-        ...
+* List of packages - GET /simple/
+* List of package files GET /simple/<package>/
+* File upload - POST, which URI could be various
+  (in case of ciconia it's /upload/).
 
-POST /
-^^^^^^
-Search for packages and also upload.
+.. _503: https://www.python.org/dev/peps/pep-0503/
 
-GET /<package>/
-^^^^^^^^^^^^^^^
+All operations should return (also simple) HTML page
+with list of the links like that (copied from warehouse docs)::
 
-This endpoint should return simple HTML page
-with the list of available files.
-For example, response of GET https://pypi.org/simple/requests/::
+    HTTP/1.0 200 OK
+    Content-Type: text/html; charset=utf-8
+    X-PyPI-Last-Serial: 871501
 
     <!DOCTYPE html>
     <html>
     <head>
-        <title>Links for requests</title>
+        <title>Simple Index</title>
     </head>
     <body>
-        <h1>Links for requests</h1>
-        <a href="https://files.pythonhosted.org/.../requests-0.2.0.tar.gz#sha256=...">requests-0.2.0.tar.gz</a><br/>
-        <a href="https://files.pythonhosted.org/.../requests-0.2.1.tar.gz#sha256=...">requests-0.2.1.tar.gz</a><br/>
-        <!-- skipped many other versions -->
-        <a href="https://files.pythonhosted.org/.../requests-2.21.0-py2.py3-none-any.whl#sha256=..." data-requires-python="&gt;=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*">requests-2.21.0-py2.py3-none-any.whl</a><br/>
-        <a href="https://files.pythonhosted.org/.../requests-2.21.0.tar.gz#sha256=..." data-requires-python="&gt;=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*">requests-2.21.0.tar.gz</a><br/>
-        </body>
+        <!-- More projects... -->
+        <a href="/simple/warehouse/">warehouse</a>
+        <!-- ...More projects -->
+    </body>
     </html>
 
+.. seealso::
+    - Simple API implementation: https://github.com/pypiserver/pypiserver
+
+XML RPC
+^^^^^^^
+
+Uh-oh. This API is deprecated, but still used by commands
+such as ``pip search``. Will describe later.
 
 
-.. seealso:: Another useful for understanding web pages:
+.. seealso::
 
-    - https://github.com/pypa/warehouse - PyPI itself
-    - https://packaging.python.org/guides/hosting-your-own-index/
-    - Simple server API implementation: https://github.com/pypiserver/pypiserver
-    - https://pypi.org/help/
-    - DevPI is also interesting example: https://github.com/devpi/devpi
+    - `Warehouse`_ - complete solution that runs pypi.org;
+    - `PyPI help`_ contains useful information about python packaging;
+    - `PyPI API`_ documentation page;
+    - `PEP 440`_, Version identification;
+    - packaging.python.org;
+    - `DevPI`_ is also interesting example;
+
+.. _`Warehouse`: https://github.com/pypa/warehouse
+.. _`PEP 440`: https://www.python.org/dev/peps/pep-0440/
+.. _`PyPI API`: https://warehouse.pypa.io/api-reference/
+.. _`PyPI help`: https://pypi.org/help/
+.. _`DevPI`: https://github.com/devpi/devpi
