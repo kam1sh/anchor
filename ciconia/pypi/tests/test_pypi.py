@@ -12,6 +12,6 @@ TAR = Path("dist/ciconia-0.1.0.tar.gz")
 def test_readers(dist):
     """ Tests for package reading (wheel and tar.gz) """
     fd = dist.open("rb")
-    pkg = models.PackageFile(fd)
+    pkg = models.PackageFile(pkg=fd)
     assert pkg.filename == dist.name
     assert pkg.metadata
