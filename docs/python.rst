@@ -16,17 +16,32 @@ implement a few HTTP endpoints:
 
 GET /
 ^^^^^
+This operation should return simple HTML page
+with the list of available packages and links to pages with available files.
+For example, response of GET https://pypi.org/simple/::
 
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Simple index</title>
+    </head>
+    <body>
+        <a href="/simple/0/">0</a>
+        <a href="/simple/0-0/">0-._.-._.-._.-._.-._.-._.-0</a>
+        <a href="/simple/0-0-1/">0.0.1</a>
+        <a href="/simple/00print-lol/">00print_lol</a>
+        <a href="/simple/00smalinux/">00SMALINUX</a>
+        ...
 
-GET /packages/
-^^^^^^^^^^^^^^
-
+POST /
+^^^^^^
+Search for packages and also upload.
 
 GET /<package>/
 ^^^^^^^^^^^^^^^
 
 This endpoint should return simple HTML page
-with the list of available versions.
+with the list of available files.
 For example, response of GET https://pypi.org/simple/requests/::
 
     <!DOCTYPE html>
@@ -48,6 +63,7 @@ For example, response of GET https://pypi.org/simple/requests/::
 
 .. seealso:: Another useful for understanding web pages:
 
+    - https://github.com/pypa/warehouse - PyPI itself
     - https://packaging.python.org/guides/hosting-your-own-index/
     - Simple server API implementation: https://github.com/pypiserver/pypiserver
     - https://pypi.org/help/

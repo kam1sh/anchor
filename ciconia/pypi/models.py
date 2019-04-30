@@ -1,5 +1,3 @@
-import datetime
-import gzip
 import logging
 import re
 import tarfile
@@ -9,6 +7,7 @@ from pathlib import Path
 
 from django.core import files
 from django.db import models
+from django.utils import timezone
 
 log = logging.getLogger(__name__)
 
@@ -24,30 +23,22 @@ class PythonPackage(models.Model):
         super().__init__(*args)
         if pkg_file:
             self.name = pkg_file.name
-            self.version = pkg_file.metadata["version"][0]
+            self.version = pkg_file.version
         if pkg_ver:
             self.version = pkg_ver.tag
-        self.updated = self.updated or datetime.datetime.now()
+        self.updated = self.updated or timezone.now()
+
+    def update_time(self):
+        self.updated = timezone.now()
 
     def __str__(self):
         return self.name
 
 
-class PackageVersion(models.Model):
-    package = models.ForeignKey(PythonPackage, on_delete=models.CASCADE)
-    tag = models.CharField(max_length=32)
-    info = models.TextField("Package information", null=True)
-
-    def __init__(self, *args, pkg_file=None):
-        super().__init__(*args)
-        if pkg_file:
-            self.tag = pkg_file.metadata["version"][0]
-
-
 class PackageFile(models.Model):
     # many to one, because one package version
     # could contain multiple files (.tar.gz, .whl etc)
-    version = models.ForeignKey(PackageVersion, on_delete=models.CASCADE)
+    package = models.ForeignKey(PythonPackage, on_delete=models.CASCADE)
     filename = models.CharField(max_length=64)
     fileobj = models.FileField(upload_to="pypi")
     pkg_type = models.CharField(max_length=16)
@@ -85,13 +76,13 @@ class PackageFile(models.Model):
                 self._metadata = self._extract_metadata(raw)
         return self._metadata
 
-    @property
-    def name(self):
-        return self.metadata["name"][0]
-
-    @property
-    def version_tag(self):
-        return self.metadata["version"][0]
+    def __getattr__(self, key: str):
+        """
+        Simple way to access package info.
+        >>> pkg.requires_python # -> ">=3.6,<4.0"
+        """
+        key = key.replace("_", "-")
+        return self.metadata[key][0]
 
     def __str__(self):
         return self.filename

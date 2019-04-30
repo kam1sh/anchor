@@ -5,5 +5,5 @@ from . import views
 
 urlpatterns = [
     path("", views.PackageList.as_view()),
-    path("<str:name>/", views.PackageVersions.as_view()),
+    path("<str:name>/", views.files, name="pypi-files"),
 ]

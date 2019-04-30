@@ -1,13 +1,13 @@
 import logging
 
+from django import http
 from django.db import transaction
+from django.shortcuts import render
+from django.utils.decorators import method_decorator
 from django.views import generic
 from django.views.decorators import csrf
-from django.utils.decorators import method_decorator
-from django import http
 
-from .models import PythonPackage, PackageVersion
-from . import models
+from .models import PackageFile, PythonPackage
 
 log = logging.getLogger(__name__)
 
@@ -28,7 +28,12 @@ class PackageList(generic.ListView):
         if not raw_file:
             m = 'Provide package within "content" file.'
             return http.HttpResponseBadRequest(m)
-        pkg_file = models.PackageFile(pkg=raw_file)
+        try:
+            name = raw_file.name
+            pkg_file = PackageFile.objects.get(filename=name)
+            pkg_file.fileobj.save(name, raw_file)
+        except PackageFile.DoesNotExist:
+            pkg_file = PackageFile(pkg=raw_file)
         log.debug("Got package %s from IP %s", pkg_file, ra)
 
         with transaction.atomic():
@@ -36,21 +41,20 @@ class PackageList(generic.ListView):
                 pkg = PythonPackage.objects.get(name=pkg_file.name)
             except PythonPackage.DoesNotExist:
                 pkg = PythonPackage(pkg_file=pkg_file)
+            pkg.update_time()
             pkg.save()
 
-            try:
-                pkg_version = PackageVersion.objects.get(package=pkg)
-            except PackageVersion.DoesNotExist:
-                pkg_version = PackageVersion(pkg_file=pkg_file)
-
-            pkg_version.package = pkg
-            pkg_version.save()
-
-            pkg_file.version = pkg_version
+            pkg_file.package = pkg
             pkg_file.save()
 
         return http.HttpResponse("OK!")
 
 
-class PackageVersions(generic.ListView):
-    template_name = "versions.html"
+def files(request, name: str):
+    """ Returns page with list of all existing files for the package. """
+    result = PackageFile.objects.filter(package__name=name)
+    return render(
+        request,
+        "versions.html",
+        dict(title=f"{name.capitalize()} files", versions=result),
+    )
