@@ -16,6 +16,7 @@ log = logging.getLogger(__name__)
 class PythonPackage(models.Model):
     name = models.CharField(max_length=64, db_index=True)
     version = models.CharField("Latest version", max_length=16)
+    summary = models.TextField(null=True)
     updated = models.DateTimeField("Last updated")
     # updated with the new package version
     info = models.TextField("Package information", null=True)

@@ -2,7 +2,7 @@
 
 {% block body %}
     {% for package in packages %}
-    <a href="{% url pypi.files package.name %}">{{ package.name }}</a>
+    <a href="{% url 'pypi.files' package.name %}">{{ package.name }}</a>
     {% empty %}
     <h1>No packages available.</h1>
     {% endfor %}

@@ -3,11 +3,9 @@ import logging
 from django import http
 from django.db import transaction
 from django.shortcuts import render
-from django.utils.decorators import method_decorator
-from django.views import generic
 from django.views.decorators import csrf
 
-from .models import PackageFile, PythonPackage
+from ..models import PackageFile, PythonPackage
 
 log = logging.getLogger(__name__)
 
@@ -42,17 +40,12 @@ def upload_package(request):
     return http.HttpResponse("OK!")
 
 
-@method_decorator(csrf.csrf_exempt, name="dispatch")
-class PackageList(generic.ListView):
-    model = PythonPackage
-    context_object_name = "packages"
-    template_name = "packages.html"
-
-    def get_queryset(self):
-        return self.model.objects.all()
+def list_packages(request):
+    """ Returns page with list of all available packages. """
+    return render(request, "packages.html", {"packages": PythonPackage.objects.all()})
 
 
-def files(request, name: str):
+def list_files(request, name: str):
     """ Returns page with list of all existing files for the package. """
     result = PackageFile.objects.filter(package__name=name)
     return render(
