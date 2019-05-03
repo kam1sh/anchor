@@ -1,4 +1,5 @@
 import hashlib
+import io
 import logging
 import re
 import tarfile
@@ -11,6 +12,8 @@ from django.db import models
 from django.utils import timezone
 
 log = logging.getLogger(__name__)
+
+__all__ = ["PythonPackage", "PackageFile"]
 
 
 class PythonPackage(models.Model):
@@ -109,10 +112,11 @@ class WheelInfo(dict):
 
     def __init__(self, lines: ty.Iterable[bytes] = None):
         super().__init__()
-        if lines:
-            lines = self._prepare_file(lines)
+        if not lines:
+            return
+        lines = self._prepare_file(lines)
 
-        for i, line in enumerate(self._check_description(lines or [])):
+        for i, line in enumerate(self._check_description(lines)):
             match = self._pattern.match(line)
             if not match:
                 log.warning("could not read metadata at line %s", i + 1)

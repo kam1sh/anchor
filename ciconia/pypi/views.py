@@ -1,13 +1,19 @@
+import functools
 import logging
+import xmlrpc.server
+from xmlrpc.client import Fault
 
 from django import http
-from django.db import transaction
+from django.db import models, transaction
 from django.shortcuts import render
 from django.views.decorators import csrf
 
-from ..models import PackageFile, PythonPackage
+from .models import PackageFile, PythonPackage
 
 log = logging.getLogger(__name__)
+
+
+__all__ = ["upload_package", "list_packages", "list_files", "xmlrpc_dispatch"]
 
 
 @csrf.csrf_exempt
@@ -53,3 +59,33 @@ def list_files(request, name: str):
         "versions.html",
         dict(title=f"{name.capitalize()} files", versions=result),
     )
+
+
+@csrf.csrf_exempt
+def xmlrpc_dispatch(request):
+    body = request.body
+    params, methodname = xmlrpc.server.loads(data=body)
+    log.debug("%s params: %s", methodname, params)
+    if methodname == "search":
+        try:
+            response = (_search(*params),)
+        except ValueError as e:
+            response = Fault(400, str(e))
+    else:
+        response = Fault(405, "Function not found")
+    return http.HttpResponse(xmlrpc.server.dumps(response, allow_none=True), "text/xml")
+
+
+def _search(spec: dict, operator="and"):
+    if not all(x in {"name", "summary"} for x in spec):
+        raise ValueError("Function supports only 'name' and 'summary' fields")
+
+    query_spec = [models.Q(**{f"{key}__contains": val[0]}) for key, val in spec.items()]
+
+    params = functools.reduce(lambda x, y: getattr(x, f"__{operator}__")(y), query_spec)
+    log.debug("Query parameters: %s", params)
+
+    query = PythonPackage.objects.filter(params)
+    return [
+        dict(name=x.name, version=x.version, summary=x.summary) for x in query[:100]
+    ]
