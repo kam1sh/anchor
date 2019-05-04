@@ -1,0 +1,9 @@
+{% extends "pypi-base.html" %}
+
+{% block body %}
+    {% for file in files %}
+    <a href="{{ file.link }}#sha256={{ file.sha256 }}"
+        {% if file.requires_python %} data-requires-python={{ file.requires_python }} {% endif %}
+        >{{ file.filename }}</a>
+    {% endfor %}
+{% endblock body %}

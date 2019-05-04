@@ -1,9 +1,0 @@
-{% extends "pypi-base.html" %}
-
-{% block body %}
-    {% for version in versions %}
-    <a href="{{ version.link }}#sha256={{ version.sha256 }}"
-        {% if version.requires_python %} data-requires-python={{ version.requires_python }} {% endif %}
-        >{{ version.filename }}</a>
-    {% endfor %}
-{% endblock body %}

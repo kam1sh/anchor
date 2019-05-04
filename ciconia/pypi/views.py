@@ -54,9 +54,7 @@ def list_files(request, name: str):
     """ Returns page with list of all existing files for the package. """
     result = PackageFile.objects.filter(package__name=name)
     return render(
-        request,
-        "versions.html",
-        dict(title=f"{name.capitalize()} files", versions=result),
+        request, "files.html", dict(title=f"{name.capitalize()} files", files=result)
     )
 
 
