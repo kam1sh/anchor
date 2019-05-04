@@ -47,7 +47,7 @@ class PackageFile(models.Model):
     filename = models.CharField(max_length=64)
     fileobj = models.FileField(upload_to="pypi")
     pkg_type = models.CharField(max_length=16)
-    sha256 = models.TextField(unique=True)
+    sha256 = models.CharField(max_length=64, unique=True)
 
     def __init__(self, *args, pkg=None, filename=None):
         super().__init__(*args)
@@ -111,7 +111,10 @@ class PackageFile(models.Model):
         >>> pkg.requires_python # -> ">=3.6,<4.0"
         """
         key = key.replace("_", "-")
-        return self.metadata[key][0]
+        try:
+            return self.metadata[key][0]
+        except KeyError:
+            raise AttributeError(key)
 
     def __str__(self):
         return self.filename

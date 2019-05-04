@@ -14,6 +14,8 @@ django-crispy-forms = "^1.7"
 djangorestframework = "^3.9"
 django-debug-toolbar = "^1.11"
 django-extensions = "^2.1"
+argon2 = {version = "^0.1.10",extras = ["django"]}
+argon2-cffi = "^19.1"
 
 [tool.poetry.dev-dependencies]
 pylint = "^2.3"
