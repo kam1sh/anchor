@@ -1,5 +1,4 @@
 import hashlib
-import io
 import logging
 import re
 import tarfile
@@ -7,6 +6,7 @@ import typing as ty
 import zipfile
 from pathlib import Path
 
+from django.conf import settings
 from django.core import files
 from django.db import models
 from django.utils import timezone
@@ -53,25 +53,9 @@ class PackageFile(models.Model):
         super().__init__(*args)
         self._metadata = None
         if pkg:
-            if not self._extract_name(pkg, filename or ""):
+            if not self._extract_name(pkg, filename):
                 raise TypeError("Filename not provided")
             self.update(pkg)
-
-    def _extract_name(self, pkg, filename: str) -> str:
-        self.filename = Path(
-            filename or getattr(pkg, "name", None) or getattr(pkg, "filename", None)
-        ).name
-        return self.filename
-
-    def _extract_metadata(self, pkg) -> "WheelMetadata":
-        ext = self.filename.split(".")
-        if ext[-1] == "whl":
-            self.pkg_type = "wheel"
-            return WheelInfo(pkg)
-        if ext[-2:] == ["tar", "gz"]:
-            self.pkg_type = "tar"
-            return SdistInfo(pkg)
-        raise ValueError("Could not recognize package format: %s" % ext)
 
     @property
     def metadata(self):
@@ -80,18 +64,46 @@ class PackageFile(models.Model):
                 self._metadata = self._extract_metadata(raw)
         return self._metadata
 
-    def update(self, src):
+    @property
+    def link(self):
+        return str(Path(settings.MEDIA_URL, self.fileobj.name))
+
+    @property
+    def path(self):
+        return Path(settings.MEDIA_ROOT, self.fileobj.name or self.filename)
+
+    def update(self, src: ty.io.TextIO):
+        if self.path.exists():
+            self.path.unlink()
         self.fileobj = files.File(src, name=self.filename)
         src.seek(0)
         self._metadata = self._extract_metadata(src)
+        src.seek(0)
         self._update_sha256(src)
 
-    def _update_sha256(self, src=None) -> str:
+    def _update_sha256(self, src) -> str:
         m = hashlib.sha256()
         for chunk in iter(lambda: src.read(2 ** 10), b""):
             m.update(chunk)
         self.sha256 = m.hexdigest()
+        log.debug("%s sha256 sum: %s", self.filename, self.sha256)
         return self.sha256
+
+    def _extract_name(self, pkg, filename):
+        self.filename = Path(
+            filename or getattr(pkg, "name", None) or getattr(pkg, "filename", None)
+        ).name
+        return self.filename
+
+    def _extract_metadata(self, pkg) -> "WheelInfo":
+        ext = self.filename.split(".")
+        if ext[-1] == "whl":
+            self.pkg_type = "wheel"
+            return WheelInfo(pkg)
+        if ext[-2:] == ["tar", "gz"]:
+            self.pkg_type = "tar"
+            return SdistInfo(pkg)
+        raise ValueError("Could not recognize package format: %s" % ext)
 
     def __getattr__(self, key: str):
         """
@@ -110,13 +122,11 @@ class WheelInfo(dict):
 
     _pattern = re.compile(r"^([\w-]+): (.+)$")
 
-    def __init__(self, lines: ty.Iterable[bytes] = None):
+    def __init__(self, fileobj):
         super().__init__()
-        if not lines:
-            return
-        lines = self._prepare_file(lines)
+        self._reader = (x.decode().rstrip() for x in self._prepare_file(fileobj))
 
-        for i, line in enumerate(self._check_description(lines)):
+        for i, line in enumerate(self._check_description()):
             match = self._pattern.match(line)
             if not match:
                 log.warning("could not read metadata at line %s", i + 1)
@@ -127,7 +137,7 @@ class WheelInfo(dict):
 
     def _prepare_file(self, pkg):
         zf = zipfile.ZipFile(pkg)
-        # all files from .dist-info folder
+        # all files from .dist-info in root folder
         dist_info = {
             x.name: str(x)
             for x in map(Path, zf.namelist())
@@ -136,12 +146,11 @@ class WheelInfo(dict):
         with zf.open(dist_info["METADATA"]) as raw:
             yield from raw
 
-    def _check_description(self, lines):
-        lines_iter = iter(x.decode().rstrip() for x in lines)
-        for line in lines_iter:
+    def _check_description(self):
+        for line in self._reader:
             if not line:
                 # use the same iterator to skip those lines in the next iteration
-                self["description"] = "\n".join(lines_iter)
+                self["description"] = "\n".join(self._reader)
                 break
             yield line
 
@@ -165,10 +174,9 @@ class SdistInfo(WheelInfo):
         with tf.extractfile(pkg_dir["PKG-INFO"]) as raw:
             yield from raw
 
-    def _check_description(self, lines):
-        lines_iter = iter(x.decode().rstrip() for x in lines)
+    def _check_description(self):
         desc = []
-        for line in lines_iter:
+        for line in self._reader:
             match = self._continue.match(line)
             if match:
                 desc.append(match.group(1))

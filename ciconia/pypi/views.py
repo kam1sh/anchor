@@ -42,7 +42,6 @@ def upload_package(request):
 
         pkg_file.package = pkg
         pkg_file.save()
-
     return http.HttpResponse("OK!")
 
 
