@@ -5,7 +5,7 @@ from django.test import RequestFactory
 
 
 def pytest_configure():
-    # removing StreamHandler to avoid double logging (in stderr and pytest)
+    # removes StreamHandler to avoid double logging (in stderr and pytest)
     logging.getLogger("ciconia").handlers = []
 
 
