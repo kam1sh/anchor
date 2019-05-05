@@ -15,10 +15,10 @@ from django.utils import timezone
 
 log = logging.getLogger(__name__)
 
-__all__ = ["PythonPackage", "PackageFile"]
+__all__ = ["Project", "PackageFile"]
 
 
-class PythonPackage(models.Model):
+class Project(models.Model):
     name = models.CharField(max_length=64, db_index=True)
     version = models.CharField("Latest version", max_length=16)
     summary = models.TextField(null=True)
@@ -43,7 +43,7 @@ class PythonPackage(models.Model):
 
 
 class PackageFile(models.Model):
-    package = models.ForeignKey(PythonPackage, on_delete=models.CASCADE)
+    project = models.ForeignKey(Project, on_delete=models.CASCADE)
     filename = models.CharField(max_length=64, unique=True)
     fileobj = models.FileField(upload_to="pypi")
     pkg_type = models.CharField(max_length=16)

@@ -1,9 +1,0 @@
-{% extends "pypi-base.html" %}
-
-{% block body %}
-    {% for package in packages %}
-    <a href="{% url 'pypi.files' package.name %}">{{ package.name }}</a>
-    {% empty %}
-    <h1>No packages available.</h1>
-    {% endfor %}
-{% endblock body %}

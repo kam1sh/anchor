@@ -1,0 +1,9 @@
+{% extends "pypi-base.html" %}
+
+{% block body %}
+    {% for project in projects %}
+    <a href="{% url 'pypi.files' project.name %}">{{ project.name }}</a>
+    {% empty %}
+    <h1>No projects available.</h1>
+    {% endfor %}
+{% endblock body %}

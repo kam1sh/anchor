@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import PackageFile, PythonPackage
+from .models import PackageFile, Project
 
 
 class FilesInline(admin.TabularInline):
@@ -8,8 +8,8 @@ class FilesInline(admin.TabularInline):
     fields = ["filename", "sha256"]
 
 
-@admin.register(PythonPackage)
-class PythonPackageAdmin(admin.ModelAdmin):
-    model = PythonPackage
+@admin.register(Project)
+class ProjectAdmin(admin.ModelAdmin):
+    model = Project
     inlines = [FilesInline]
     list_display = ["name", "version", "summary"]

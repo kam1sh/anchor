@@ -8,7 +8,7 @@ from django.db import models, transaction
 from django.shortcuts import render
 from django.views.decorators import csrf
 
-from .models import PackageFile, PythonPackage
+from .models import PackageFile, Project
 
 log = logging.getLogger(__name__)
 
@@ -40,9 +40,9 @@ def upload_package(request):
 
     with transaction.atomic():
         try:
-            pkg = PythonPackage.objects.get(name=pkg_file.name)
-        except PythonPackage.DoesNotExist:
-            pkg = PythonPackage(pkg_file=pkg_file)
+            pkg = Project.objects.get(name=pkg_file.name)
+        except Project.DoesNotExist:
+            pkg = Project(pkg_file=pkg_file)
         pkg.update_time()
         pkg.save()
 
@@ -51,9 +51,9 @@ def upload_package(request):
     return http.HttpResponse("OK!")
 
 
-def list_packages(request):
-    """ Returns page with list of all available packages. """
-    return render(request, "packages.html", {"packages": PythonPackage.objects.all()})
+def list_projects(request):
+    """ Returns page with list of all available projects. """
+    return render(request, "projects.html", {"projects": Project.objects.all()})
 
 
 def list_files(request, name: str):
@@ -96,7 +96,7 @@ def _search(spec: dict, operator="and"):
     params = functools.reduce(lambda x, y: getattr(x, f"__{operator}__")(y), query_spec)
     log.debug("Query parameters: %s", params)
 
-    query = PythonPackage.objects.filter(params)
+    query = Project.objects.filter(params)
     return [
         dict(name=x.name, version=x.version, summary=x.summary) for x in query[:100]
     ]
