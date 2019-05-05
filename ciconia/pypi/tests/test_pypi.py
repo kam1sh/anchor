@@ -23,6 +23,8 @@ def test_readers(dist):
     pkg = models.PackageFile(pkg=fd)
     assert pkg.filename == dist.name
     assert pkg.fileobj.name == dist.name
+    # metadata accessing
+    assert pkg.name == "ciconia"
     assert pkg.version == ciconia.__version__
     assert pkg.sha256 == sha256sum(dist)
     assert isinstance(pkg.metadata["requires-dist"], list)

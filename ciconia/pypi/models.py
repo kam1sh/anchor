@@ -1,3 +1,4 @@
+import json
 import hashlib
 import logging
 import re
@@ -9,6 +10,7 @@ from pathlib import Path
 from django.conf import settings
 from django.core import files
 from django.db import models
+from django.shortcuts import reverse
 from django.utils import timezone
 
 log = logging.getLogger(__name__)
@@ -41,13 +43,12 @@ class PythonPackage(models.Model):
 
 
 class PackageFile(models.Model):
-    # many to one, because one package version
-    # could contain multiple files (.tar.gz, .whl etc)
     package = models.ForeignKey(PythonPackage, on_delete=models.CASCADE)
-    filename = models.CharField(max_length=64)
+    filename = models.CharField(max_length=64, unique=True)
     fileobj = models.FileField(upload_to="pypi")
     pkg_type = models.CharField(max_length=16)
     sha256 = models.CharField(max_length=64, unique=True)
+    _metadata = models.TextField()
 
     def __init__(self, *args, pkg=None, filename=None):
         super().__init__(*args)
@@ -59,25 +60,26 @@ class PackageFile(models.Model):
 
     @property
     def metadata(self):
-        if not self._metadata:
-            with self.fileobj.open() as raw:
-                self._metadata = self._extract_metadata(raw)
-        return self._metadata
+        return json.loads(self._metadata)
 
     @property
     def link(self):
-        return str(Path(settings.MEDIA_URL, self.fileobj.name))
+        return reverse("pypi.download", kwargs={"filename": self.name})
 
     @property
-    def path(self):
+    def path(self) -> Path:
         return Path(settings.MEDIA_ROOT, self.fileobj.name or self.filename)
+
+    @property
+    def size(self) -> int:
+        return self.path.stat().st_size
 
     def update(self, src: ty.io.TextIO):
         if self.path.exists():
             self.path.unlink()
         self.fileobj = files.File(src, name=self.filename)
         src.seek(0)
-        self._metadata = self._extract_metadata(src)
+        self._metadata = json.dumps(self._extract_metadata(src))
         src.seek(0)
         self._update_sha256(src)
 

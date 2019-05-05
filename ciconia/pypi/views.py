@@ -13,7 +13,13 @@ from .models import PackageFile, PythonPackage
 log = logging.getLogger(__name__)
 
 
-__all__ = ["upload_package", "list_packages", "list_files", "xmlrpc_dispatch"]
+__all__ = [
+    "upload_package",
+    "list_packages",
+    "list_files",
+    "download_file",
+    "xmlrpc_dispatch",
+]
 
 
 @csrf.csrf_exempt
@@ -56,6 +62,14 @@ def list_files(request, name: str):
     return render(
         request, "files.html", dict(title=f"{name.capitalize()} files", files=result)
     )
+
+
+def download_file(request, filename: str):
+    pkg_file = PackageFile.objects.get(filename=filename)
+    pkg = pkg_file.package
+    # if not pkg.available_for(current_user):
+    #     return http.HttpResponseForbidden()
+    return http.FileResponse(pkg_file.fileobj)
 
 
 @csrf.csrf_exempt
