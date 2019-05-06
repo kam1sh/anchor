@@ -2,6 +2,8 @@
 Base settings to build other settings files upon.
 """
 
+import sys
+
 import environ
 
 ROOT_DIR = (
@@ -216,5 +218,5 @@ LOGGING = {
         "verbose": {"format": "%(asctime)s %(name)s [%(funcName)s] %(message)s"}
     },
     "handlers": {"console": {"class": "logging.StreamHandler", "formatter": "verbose"}},
-    "loggers": {"ciconia": {"level": "DEBUG", "handlers": ["console"]}},
+    "loggers": {"ciconia": {"level": "INFO"}},
 }

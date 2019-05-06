@@ -2,6 +2,7 @@ import subprocess
 from pathlib import Path
 
 import pytest
+from packaging.utils import canonicalize_version
 
 import ciconia
 from ciconia.pypi import models
@@ -25,6 +26,6 @@ def test_readers(dist):
     assert pkg.fileobj.name == dist.name
     # metadata accessing
     assert pkg.name == "ciconia"
-    assert pkg.version == ciconia.__version__
+    assert pkg.version == canonicalize_version(ciconia.__version__)
     assert pkg.sha256 == sha256sum(dist)
     assert isinstance(pkg.metadata["requires-dist"], list)

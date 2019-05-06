@@ -64,3 +64,5 @@ if env("USE_DOCKER", default="no") == "yes":
 INSTALLED_APPS += ["django_extensions"]  # noqa F405
 
 LOGGING["loggers"]["ciconia"]["level"] = "DEBUG"
+if len(sys.argv) > 1 and sys.argv[1] == "runserver":
+    LOGGING["loggers"]["ciconia"]["handlers"] = ["console"]

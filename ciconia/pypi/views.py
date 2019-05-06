@@ -1,13 +1,16 @@
 import functools
 import logging
+import re
 import xmlrpc.server
 from xmlrpc.client import Fault
 
 from django import http
 from django.db import models, transaction
+from django.http import HttpResponseBadRequest as badrequest
 from django.shortcuts import render
 from django.views.decorators import csrf
 
+from ..common.decorators import wrap_exceptions
 from .models import PackageFile, Project
 
 log = logging.getLogger(__name__)
@@ -15,40 +18,58 @@ log = logging.getLogger(__name__)
 
 __all__ = [
     "upload_package",
-    "list_packages",
+    "list_projects",
     "list_files",
     "download_file",
     "xmlrpc_dispatch",
 ]
 
 
+allowed_files = re.compile(r".+\.(tar\.gz|zip|whl|egg)$", re.I)
+
+
 @csrf.csrf_exempt
+@wrap_exceptions
 def upload_package(request):
-    ra = request.META["REMOTE_ADDR"]
+    """
+    Uploads new package to the server.
+    If package with this filename already exists, it will be updated.
+    """
     # cl = request.META["CONTENT_LENGTH"] # could be useful in the future
+    form = request.POST
+    proj_name = form["name"]
+
+    # at first find the project to check permissions
+    try:
+        project = Project.objects.get(name=proj_name)
+        # TODO check permissions
+    except Project.DoesNotExist:
+        # automatically create new project
+        project = Project(name=proj_name)
+    project.update_version(form["version"])
+    project.update_time()
+
+    # and then the file stuff
     raw_file = request.FILES.get("content")
     if not raw_file:
-        m = 'Provide package within "content" file.'
-        return http.HttpResponseBadRequest(m)
+        return badrequest('Provide package within "content" file.')
+    # TODO check file size
     try:
-        name = raw_file.name
-        pkg_file = PackageFile.objects.get(filename=name)
+        pkg_file = PackageFile.objects.get(filename=raw_file.name)
         pkg_file.update(raw_file)
     except PackageFile.DoesNotExist:
         pkg_file = PackageFile(pkg=raw_file)
-    log.debug("Got package %s from IP %s", pkg_file, ra)
+
+    if pkg_file.sha256 != form["sha256_digest"]:
+        return badrequest("Hashsums does not match")
+
+    log.debug("Got package %s and project %s", pkg_file, project)
 
     with transaction.atomic():
-        try:
-            pkg = Project.objects.get(name=pkg_file.name)
-        except Project.DoesNotExist:
-            pkg = Project(pkg_file=pkg_file)
-        pkg.update_time()
-        pkg.save()
-
-        pkg_file.package = pkg
+        project.save()
+        pkg_file.package = project
         pkg_file.save()
-    return http.HttpResponse("OK!")
+    return http.HttpResponse("Package uploaded succesfully")
 
 
 def list_projects(request):
@@ -66,7 +87,7 @@ def list_files(request, name: str):
 
 def download_file(request, filename: str):
     pkg_file = PackageFile.objects.get(filename=filename)
-    pkg = pkg_file.package
+    # pkg = pkg_file.package
     # if not pkg.available_for(current_user):
     #     return http.HttpResponseForbidden()
     return http.FileResponse(pkg_file.fileobj)

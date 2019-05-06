@@ -1,5 +1,7 @@
-import json
+from __future__ import annotations
+
 import hashlib
+import json
 import logging
 import re
 import tarfile
@@ -7,15 +9,21 @@ import typing as ty
 import zipfile
 from pathlib import Path
 
+import packaging.utils
+import pkg_resources
+import stdlib_list
 from django.conf import settings
 from django.core import files
 from django.db import models
 from django.shortcuts import reverse
 from django.utils import timezone
 
-log = logging.getLogger(__name__)
-
 __all__ = ["Project", "PackageFile"]
+
+log = logging.getLogger(__name__)
+prohibited_packages = set(stdlib_list.stdlib_list("3.7"))
+# TODO maybe also allow zip and egg?
+allowed_files = re.compile(r".+\.(tar\.gz|whl)$", re.I)
 
 
 class Project(models.Model):
@@ -26,20 +34,31 @@ class Project(models.Model):
     # updated with the new package version
     info = models.TextField("Package information", null=True)
 
-    def __init__(self, *args, pkg_file=None, pkg_ver=None):
+    def __init__(self, *args, name=None, version=None):
         super().__init__(*args)
-        if pkg_file:
-            self.name = pkg_file.name
-            self.version = pkg_file.version
-        if pkg_ver:
-            self.version = pkg_ver.tag
+        self._set_name(name or self.name)
+        if version:
+            self.update_version(version)
         self.updated = self.updated or timezone.now()
+
+    def from_file(self, pkg_file: PackageFile):
+        """ Updates package info from pkg_file metadata. """
+        self._set_name(pkg_file.name)
+        self.update_version(pkg_file.version)
+
+    def _set_name(self, name):
+        if name in prohibited_packages:
+            raise ValueError('Name "%s" conflicts with Python stdlib.' % name)
+        self.name = pkg_resources.safe_name(name)
 
     def update_time(self):
         self.updated = timezone.now()
 
+    def update_version(self, version: str):
+        self.version = packaging.utils.canonicalize_version(version)
+
     def __str__(self):
-        return self.name
+        return self.name + " " + self.version
 
 
 class PackageFile(models.Model):
@@ -52,15 +71,19 @@ class PackageFile(models.Model):
 
     def __init__(self, *args, pkg=None, filename=None):
         super().__init__(*args)
-        self._metadata = None
         if pkg:
             if not self._extract_name(pkg, filename):
                 raise TypeError("Filename not provided")
             self.update(pkg)
 
     @property
-    def metadata(self):
-        return json.loads(self._metadata)
+    def metadata(self) -> WheelInfo:
+        return WheelInfo(**json.loads(self._metadata))
+
+    @metadata.setter
+    def metadata(self, val: dict):
+        val["version"] = packaging.utils.canonicalize_version(val["version"][0])
+        self._metadata = json.dumps(val)
 
     @property
     def link(self):
@@ -79,7 +102,7 @@ class PackageFile(models.Model):
             self.path.unlink()
         self.fileobj = files.File(src, name=self.filename)
         src.seek(0)
-        self._metadata = json.dumps(self._extract_metadata(src))
+        self.metadata = self._extract_metadata(src)
         src.seek(0)
         self._update_sha256(src)
 
@@ -92,10 +115,15 @@ class PackageFile(models.Model):
         return self.sha256
 
     def _extract_name(self, pkg, filename):
-        self.filename = Path(
+        filename = Path(
             filename or getattr(pkg, "name", None) or getattr(pkg, "filename", None)
         ).name
-        return self.filename
+        if "/" in filename or "\\" in filename:
+            raise ValueError("Invalid file name")
+        if not allowed_files.match(filename):
+            raise ValueError("Only wheel and tar.gz supported")
+        self.filename = filename
+        return filename
 
     def _extract_metadata(self, pkg) -> "WheelInfo":
         ext = self.filename.split(".")
@@ -108,27 +136,21 @@ class PackageFile(models.Model):
         raise ValueError("Could not recognize package format: %s" % ext)
 
     def __getattr__(self, key: str):
-        """
-        Simple way to access package info.
-        >>> pkg.requires_python # -> ">=3.6,<4.0"
-        """
-        key = key.replace("_", "-")
-        try:
-            return self.metadata[key][0]
-        except KeyError:
-            raise AttributeError(key)
+        return self.metadata[key][0]
 
     def __str__(self):
         return self.filename
 
 
 class WheelInfo(dict):
-    """ Case-insensitive dictionary that stores wheel package metadata. """
+    """Case-insensitive dictionary that stores wheel package metadata."""
 
     _pattern = re.compile(r"^([\w-]+): (.+)$")
 
-    def __init__(self, fileobj):
-        super().__init__()
+    def __init__(self, fileobj=None, **kwargs):
+        super().__init__(**kwargs)
+        if not fileobj:
+            return
         self._reader = (x.decode().rstrip() for x in self._prepare_file(fileobj))
 
         for i, line in enumerate(self._check_description()):
@@ -159,10 +181,23 @@ class WheelInfo(dict):
                 break
             yield line
 
+    def __getattr__(self, key: str):
+        """
+        Simple way to access package info.
+        >>> pkg.requires_python # -> ">=3.6,<4.0"
+        """
+        key = key.replace("_", "-")
+        try:
+            return self[key][0]
+        except KeyError:
+            raise AttributeError(key)
+
     def __setitem__(self, key, value):
+        value = value if isinstance(value, list) else [value]
         return super().__setitem__(key.lower(), value)
 
     def __getitem__(self, key):
+        """ Low-level access  """
         return super().__getitem__(key.lower())
 
 
