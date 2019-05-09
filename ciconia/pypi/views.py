@@ -10,7 +10,7 @@ from django.http import HttpResponseBadRequest as badrequest
 from django.shortcuts import render
 from django.views.decorators import csrf
 
-from ..common.decorators import wrap_exceptions
+from ..common.views import wrap_exceptions, basic_auth
 from .models import PackageFile, Project
 
 log = logging.getLogger(__name__)
@@ -30,6 +30,7 @@ allowed_files = re.compile(r".+\.(tar\.gz|zip|whl|egg)$", re.I)
 
 @csrf.csrf_exempt
 @wrap_exceptions
+@basic_auth
 def upload_package(request):
     """
     Uploads new package to the server.
