@@ -53,22 +53,26 @@ with list of the links like that (copied from warehouse docs)::
 
 Upload API
 ^^^^^^^^^^
-I couldn't find PEP with description of the file upload API,
-but at least we have `Warehouse upload`_ description and `source code`_.
-What they says:
+Upload API is just an POST operation with file and metadata (`specification`_).
+A few moments:
 
 - Allowed only next files: .egg, .tar.gz, .whl and .zip (`PEP 527`_);
 - Package name should not conflict with Python stdlib;
 - It's good to normalize names and versions with,
   for example, module pkg_resources and `packaging`_;
-- With file also comes package metadata in POST form contents.
 
 Also, in case of ciconia, URI for upload is /py/upload.
+
+.. seealso::
+
+    - `Warehouse upload`_ documentation
+    - Warehouse `source code`_
 
 .. _`Warehouse upload`: https://warehouse.pypa.io/api-reference/legacy/#upload-api
 .. _`source code`: https://github.com/pypa/warehouse/blob/master/warehouse/forklift/legacy.py#L702
 .. _`PEP 527`: https://www.python.org/dev/peps/pep-0527/
 .. _`packaging`: https://github.com/pypa/packaging
+.. _`specification`: https://packaging.python.org/specifications/core-metadata/
 
 XML RPC
 ^^^^^^^

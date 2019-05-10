@@ -12,18 +12,47 @@ from pathlib import Path
 import packaging.utils
 import pkg_resources
 import stdlib_list
+from django.http import QueryDict
 from django.conf import settings
 from django.core import files
 from django.db import models
 from django.shortcuts import reverse
 from django.utils import timezone
 
-__all__ = ["Project", "PackageFile"]
+__all__ = ["Metadata", "Project", "PackageFile"]
 
 log = logging.getLogger(__name__)
 prohibited_packages = set(stdlib_list.stdlib_list("3.7"))
 # TODO maybe also allow zip and egg?
 allowed_files = re.compile(r".+\.(tar\.gz|whl)$", re.I)
+
+
+EMPTY_SHA256 = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+
+
+class Metadata(dict):
+    """ Dict with a few checks for django QueryDict and version formatting. """
+
+    def __init__(self, form: dict = None):
+        if isinstance(form, QueryDict):
+            super().__init__()
+            for key in form:
+                if key in {"classifiers", "requires_dist"}:
+                    self[key] = form.getlist(key)
+                else:
+                    self[key] = form[key]
+        else:
+            super().__init__(**form)
+        self["name"] = pkg_resources.safe_name(self["name"])
+        self["version"] = packaging.utils.canonicalize_version(self["version"])
+        if self["name"] in prohibited_packages:
+            raise ValueError(f"Name {self.name!r} conflicts with Python stdlib.")
+
+    def __getattr__(self, name):
+        try:
+            return self[name]
+        except KeyError as e:
+            raise AttributeError(name) from e
 
 
 class Project(models.Model):
@@ -34,28 +63,15 @@ class Project(models.Model):
     # updated with the new package version
     info = models.TextField("Package information", null=True)
 
-    def __init__(self, *args, name=None, version=None):
-        super().__init__(*args)
-        self._set_name(name or self.name)
-        if version:
-            self.update_version(version)
-        self.updated = self.updated or timezone.now()
-
-    def from_file(self, pkg_file: PackageFile):
+    def from_metadata(self, metadata: Metadata):
         """ Updates package info from pkg_file metadata. """
-        self._set_name(pkg_file.name)
-        self.update_version(pkg_file.version)
-
-    def _set_name(self, name):
-        if name in prohibited_packages:
-            raise ValueError('Name "%s" conflicts with Python stdlib.' % name)
-        self.name = pkg_resources.safe_name(name)
+        self.name = metadata.name
+        self.version = metadata.version
+        self.summary = metadata.summary
+        self.info = metadata.description
 
     def update_time(self):
         self.updated = timezone.now()
-
-    def update_version(self, version: str):
-        self.version = packaging.utils.canonicalize_version(version)
 
     def __str__(self):
         return self.name + " " + self.version
@@ -69,20 +85,25 @@ class PackageFile(models.Model):
     sha256 = models.CharField(max_length=64, unique=True)
     _metadata = models.TextField()
 
-    def __init__(self, *args, pkg=None, filename=None):
+    def __init__(self, *args, pkg=None, metadata=None):
         super().__init__(*args)
+        if metadata:
+            self.metadata = metadata
         if pkg:
-            if not self._extract_name(pkg, filename):
+            if not self._extract_name(pkg):
                 raise TypeError("Filename not provided")
             self.update(pkg)
 
     @property
-    def metadata(self) -> WheelInfo:
-        return WheelInfo(**json.loads(self._metadata))
+    def metadata(self) -> Metadata:
+        if not self._metadata:
+            raise ValueError("No metadata available")
+            self.metadata = self._extract_metadata(self.fileobj)
+        return Metadata(json.loads(self._metadata))
 
     @metadata.setter
-    def metadata(self, val: dict):
-        val["version"] = packaging.utils.canonicalize_version(val["version"][0])
+    def metadata(self, raw: dict):
+        val = Metadata(raw)
         self._metadata = json.dumps(val)
 
     @property
@@ -91,30 +112,29 @@ class PackageFile(models.Model):
 
     @property
     def path(self) -> Path:
-        return Path(settings.MEDIA_ROOT, self.fileobj.name or self.filename)
+        if self.filename or self.fileobj.name:
+            return Path(settings.MEDIA_ROOT, self.fileobj.name or self.filename)
 
     @property
     def size(self) -> int:
         return self.path.stat().st_size
 
     def update(self, src: ty.io.TextIO):
-        if self.path.exists():
+        if self.path and self.path.exists():
             self.path.unlink()
+        self._extract_name(src)
         self.fileobj = files.File(src, name=self.filename)
-        src.seek(0)
-        self.metadata = self._extract_metadata(src)
-        src.seek(0)
-        self._update_sha256(src)
-
-    def _update_sha256(self, src) -> str:
         m = hashlib.sha256()
         for chunk in iter(lambda: src.read(2 ** 10), b""):
             m.update(chunk)
         self.sha256 = m.hexdigest()
-        log.debug("%s sha256 sum: %s", self.filename, self.sha256)
-        return self.sha256
+        if self.sha256 == EMPTY_SHA256:
+            raise ValueError("Empty file")
+        if self.sha256 != self.metadata["sha256_digest"]:
+            raise ValueError("Form digest does not match hashsum from the file")
+        log.debug("%s sha256: %s", self.filename, self.sha256)
 
-    def _extract_name(self, pkg, filename):
+    def _extract_name(self, pkg, filename=None):
         filename = Path(
             filename or getattr(pkg, "name", None) or getattr(pkg, "filename", None)
         ).name
@@ -133,13 +153,16 @@ class PackageFile(models.Model):
         if ext[-2:] == ["tar", "gz"]:
             self.pkg_type = "tar"
             return SdistInfo(pkg)
-        raise ValueError("Could not recognize package format: %s" % ext)
-
-    def __getattr__(self, key: str):
-        return self.metadata[key][0]
+        raise ValueError(f"Could not recognize package format: {ext!r}")
 
     def __str__(self):
         return self.filename
+
+    def __getattr__(self, name):
+        try:
+            return self.metadata[name]
+        except KeyError as e:
+            raise AttributeError(name) from e
 
 
 class WheelInfo(dict):

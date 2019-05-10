@@ -11,7 +11,7 @@ from django.shortcuts import render
 from django.views.decorators import csrf
 
 from ..common.views import wrap_exceptions, basic_auth
-from .models import PackageFile, Project
+from .models import Metadata, PackageFile, Project
 
 log = logging.getLogger(__name__)
 
@@ -37,17 +37,16 @@ def upload_package(request):
     If package with this filename already exists, it will be updated.
     """
     # cl = request.META["CONTENT_LENGTH"] # could be useful in the future
-    form = request.POST
-    proj_name = form["name"]
+    form = Metadata(request.POST)
 
     # at first find the project to check permissions
     try:
-        project = Project.objects.get(name=proj_name)
+        project = Project.objects.get(name=form.name)
         # TODO check permissions
     except Project.DoesNotExist:
         # automatically create new project
-        project = Project(name=proj_name)
-    project.update_version(form["version"])
+        project = Project()
+    project.from_metadata(form)
     project.update_time()
 
     # and then the file stuff
@@ -57,10 +56,12 @@ def upload_package(request):
     # TODO check file size
     try:
         pkg_file = PackageFile.objects.get(filename=raw_file.name)
-        pkg_file.update(raw_file)
     except PackageFile.DoesNotExist:
-        pkg_file = PackageFile(pkg=raw_file)
+        pkg_file = PackageFile()
+    pkg_file.metadata = form
+    pkg_file.update(raw_file)
 
+    log.debug("Form sha256: %s", form["sha256_digest"])
     if pkg_file.sha256 != form["sha256_digest"]:
         return badrequest("Hashsums does not match")
 
@@ -68,7 +69,7 @@ def upload_package(request):
 
     with transaction.atomic():
         project.save()
-        pkg_file.package = project
+        pkg_file.project = project
         pkg_file.save()
     return http.HttpResponse("Package uploaded succesfully")
 
