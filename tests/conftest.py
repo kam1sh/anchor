@@ -4,6 +4,7 @@ import pytest
 from django.test import RequestFactory
 
 from ciconia.users.models import User
+
 from . import Client
 
 

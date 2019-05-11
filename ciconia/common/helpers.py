@@ -1,5 +1,5 @@
-import json
 import functools
+import json
 
 from django.db import models
 from django.db.models.query import QuerySet
@@ -8,7 +8,7 @@ from django.http import HttpResponse
 
 class JsonResponse5(HttpResponse):
     def __init__(self, data, **kwargs):
-        content_type = "application/json; version=5"
+        content_type = "application/json"
         super().__init__(json.dumps(data), content_type=content_type, **kwargs)
 
 

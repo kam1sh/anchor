@@ -1,15 +1,14 @@
-import subprocess
-from pathlib import Path
 import base64
+import subprocess
+import xmlrpc.client
+from pathlib import Path
 
 import pytest
-from packaging.utils import canonicalize_version
-from django.test import Client
 from django.core.files.uploadedfile import File
+from packaging.utils import canonicalize_version
 
 import ciconia
 from ciconia.pypi import models
-
 
 PACKAGES = dict(
     sdist=next(Path("dist").glob("*.whl")),
@@ -58,6 +57,20 @@ def dist(request):
         yield form
 
 
+@pytest.fixture
+def package(dist, db):
+    file_ = dist.pop("file")
+    dist = models.Metadata(dist)
+    project = models.Project()
+    project.from_metadata(dist)
+    project.update_time()
+    project.save()
+    pkg = models.PackageFile(pkg=file_, metadata=dist)
+    pkg.project = project
+    pkg.save()
+    return pkg
+
+
 def sha256sum(pth: Path):
     return subprocess.check_output(
         ["sha256sum", pth.absolute()], encoding="utf-8"
@@ -88,3 +101,25 @@ def test_upload(dist, client, db):
     response = client.post("/py/upload/", form, HTTP_AUTHORIZATION=auth)
     print(response.content)
     assert response == 200
+
+
+def test_download(package, client):
+    assert client.get(f"/py/download/{package.filename}") == 200
+
+
+def test_search(package, client):
+    name = package.name
+    data = xmlrpc.client.dumps((dict(name=[name]), "and"), "search")
+    response = client.post("/py/", data=data, content_type="text/xml")
+    assert response == 200
+    assert name in response.content.decode()
+
+
+def test_lists(package, client):
+    name = package.name
+    resp = client.get("/py/simple/")
+    assert resp == 200
+    assert name in resp.content.decode()
+    resp = client.get(f"/py/simple/{name}/")
+    assert resp == 200
+    assert package.filename in resp.content.decode()

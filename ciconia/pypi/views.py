@@ -10,7 +10,8 @@ from django.http import HttpResponseBadRequest as badrequest
 from django.shortcuts import render
 from django.views.decorators import csrf
 
-from ..common.views import wrap_exceptions, basic_auth
+from ..common.exceptions import UserError
+from ..common.views import basic_auth
 from .models import Metadata, PackageFile, Project
 
 log = logging.getLogger(__name__)
@@ -29,7 +30,6 @@ allowed_files = re.compile(r".+\.(tar\.gz|zip|whl|egg)$", re.I)
 
 
 @csrf.csrf_exempt
-@wrap_exceptions
 @basic_auth
 def upload_package(request):
     """
@@ -81,7 +81,7 @@ def list_projects(request):
 
 def list_files(request, name: str):
     """ Returns page with list of all existing files for the package. """
-    result = PackageFile.objects.filter(package__name=name)
+    result = PackageFile.objects.filter(project__name=name)
     return render(
         request, "files.html", dict(title=f"{name.capitalize()} files", files=result)
     )
@@ -103,7 +103,7 @@ def xmlrpc_dispatch(request):
     if methodname == "search":
         try:
             response = (_search(*params),)
-        except ValueError as e:
+        except UserError as e:
             response = Fault(400, str(e))
     else:
         response = Fault(405, "Function not found")
@@ -112,7 +112,7 @@ def xmlrpc_dispatch(request):
 
 def _search(spec: dict, operator="and"):
     if not all(x in {"name", "summary"} for x in spec):
-        raise ValueError("Function supports only 'name' and 'summary' fields")
+        raise UserError("Function supports only 'name' and 'summary' fields")
 
     query_spec = [models.Q(**{f"{key}__contains": val[0]}) for key, val in spec.items()]
 

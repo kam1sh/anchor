@@ -4,26 +4,8 @@ This package contains useful decorators for any django applications.
 import base64
 import functools
 
-from django.http import HttpResponse, HttpResponseBadRequest
-from django.http import HttpResponseForbidden as forbidden
 from django.contrib import auth
-
-
-def wrap_exceptions(method):
-    """
-    Catches standard exceptions and returns http responses with them.
-    Example:
-    ValueError -> Bad request
-    """
-    # TODO maybe rewrite to middleware?
-    @functools.wraps(method)
-    def wrapper(*args, **kwargs):
-        try:
-            return method(*args, **kwargs)
-        except ValueError as e:
-            return HttpResponseBadRequest(str(e))
-
-    return wrapper
+from django.http import HttpResponse
 
 
 def basic_auth(func):
@@ -36,7 +18,6 @@ def basic_auth(func):
         result = _auth(request)
         if result is None:
             return HttpResponse("No authentication form provided", status=401)
-            # return forbidden("Authentication form not provided")
         if not result:
             return HttpResponse("Invalid credentials", status=401)
         return func(request, *args, **kwargs)

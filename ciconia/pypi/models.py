@@ -12,12 +12,14 @@ from pathlib import Path
 import packaging.utils
 import pkg_resources
 import stdlib_list
-from django.http import QueryDict
 from django.conf import settings
 from django.core import files
 from django.db import models
+from django.http import QueryDict
 from django.shortcuts import reverse
 from django.utils import timezone
+
+from ..common.exceptions import UserError
 
 __all__ = ["Metadata", "Project", "PackageFile"]
 
@@ -46,13 +48,14 @@ class Metadata(dict):
         self["name"] = pkg_resources.safe_name(self["name"])
         self["version"] = packaging.utils.canonicalize_version(self["version"])
         if self["name"] in prohibited_packages:
-            raise ValueError(f"Name {self.name!r} conflicts with Python stdlib.")
+            raise UserError(f"Name {self.name!r} conflicts with Python stdlib.")
 
     def __getattr__(self, name):
         try:
             return self[name]
         except KeyError as e:
-            raise AttributeError(name) from e
+            pass
+        raise AttributeError(name)
 
 
 class Project(models.Model):
@@ -98,12 +101,12 @@ class PackageFile(models.Model):
     def metadata(self) -> Metadata:
         if not self._metadata:
             raise ValueError("No metadata available")
-            self.metadata = self._extract_metadata(self.fileobj)
         return Metadata(json.loads(self._metadata))
 
     @metadata.setter
     def metadata(self, raw: dict):
         val = Metadata(raw)
+        self.pkg_type = val.filetype
         self._metadata = json.dumps(val)
 
     @property
@@ -129,9 +132,9 @@ class PackageFile(models.Model):
             m.update(chunk)
         self.sha256 = m.hexdigest()
         if self.sha256 == EMPTY_SHA256:
-            raise ValueError("Empty file")
+            raise UserError("Empty file")
         if self.sha256 != self.metadata["sha256_digest"]:
-            raise ValueError("Form digest does not match hashsum from the file")
+            raise UserError("Form digest does not match hashsum from the file")
         log.debug("%s sha256: %s", self.filename, self.sha256)
 
     def _extract_name(self, pkg, filename=None):
@@ -139,21 +142,11 @@ class PackageFile(models.Model):
             filename or getattr(pkg, "name", None) or getattr(pkg, "filename", None)
         ).name
         if "/" in filename or "\\" in filename:
-            raise ValueError("Invalid file name")
+            raise UserError("Invalid file name")
         if not allowed_files.match(filename):
-            raise ValueError("Only wheel and tar.gz supported")
+            raise UserError("Only wheel and tar.gz supported")
         self.filename = filename
         return filename
-
-    def _extract_metadata(self, pkg) -> "WheelInfo":
-        ext = self.filename.split(".")
-        if ext[-1] == "whl":
-            self.pkg_type = "wheel"
-            return WheelInfo(pkg)
-        if ext[-2:] == ["tar", "gz"]:
-            self.pkg_type = "tar"
-            return SdistInfo(pkg)
-        raise ValueError(f"Could not recognize package format: {ext!r}")
 
     def __str__(self):
         return self.filename
@@ -162,87 +155,5 @@ class PackageFile(models.Model):
         try:
             return self.metadata[name]
         except KeyError as e:
-            raise AttributeError(name) from e
-
-
-class WheelInfo(dict):
-    """Case-insensitive dictionary that stores wheel package metadata."""
-
-    _pattern = re.compile(r"^([\w-]+): (.+)$")
-
-    def __init__(self, fileobj=None, **kwargs):
-        super().__init__(**kwargs)
-        if not fileobj:
-            return
-        self._reader = (x.decode().rstrip() for x in self._prepare_file(fileobj))
-
-        for i, line in enumerate(self._check_description()):
-            match = self._pattern.match(line)
-            if not match:
-                log.warning("could not read metadata at line %s", i + 1)
-                continue
-            key, val = match.groups()
-            log.debug("%s=%s", key, val)
-            self.setdefault(key.lower(), []).append(val)
-
-    def _prepare_file(self, pkg):
-        zf = zipfile.ZipFile(pkg)
-        # all files from .dist-info in root folder
-        dist_info = {
-            x.name: str(x)
-            for x in map(Path, zf.namelist())
-            if not x.parent.parent.name and x.parent.name.endswith(".dist-info")
-        }
-        with zf.open(dist_info["METADATA"]) as raw:
-            yield from raw
-
-    def _check_description(self):
-        for line in self._reader:
-            if not line:
-                # use the same iterator to skip those lines in the next iteration
-                self["description"] = "\n".join(self._reader)
-                break
-            yield line
-
-    def __getattr__(self, key: str):
-        """
-        Simple way to access package info.
-        >>> pkg.requires_python # -> ">=3.6,<4.0"
-        """
-        key = key.replace("_", "-")
-        try:
-            return self[key][0]
-        except KeyError:
-            raise AttributeError(key)
-
-    def __setitem__(self, key, value):
-        value = value if isinstance(value, list) else [value]
-        return super().__setitem__(key.lower(), value)
-
-    def __getitem__(self, key):
-        """ Low-level access  """
-        return super().__getitem__(key.lower())
-
-
-class SdistInfo(WheelInfo):
-    _continue = re.compile(r"^        (.+)$")
-
-    def _prepare_file(self, pkg):
-        tf = tarfile.open(fileobj=pkg, mode="r:gz")
-        pkg_dir = {
-            x.name: str(x)
-            for x in map(Path, tf.getnames())
-            if not x.parent.parent.parent.name
-        }
-        with tf.extractfile(pkg_dir["PKG-INFO"]) as raw:
-            yield from raw
-
-    def _check_description(self):
-        desc = []
-        for line in self._reader:
-            match = self._continue.match(line)
-            if match:
-                desc.append(match.group(1))
-            else:
-                yield line
-        self["description"] = "\n".join(desc)
+            pass
+        raise AttributeError(name)
