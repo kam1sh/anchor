@@ -1,4 +1,5 @@
 import base64
+import random
 import subprocess
 import xmlrpc.client
 from pathlib import Path
@@ -8,7 +9,7 @@ from django.core.files.uploadedfile import File
 from packaging.utils import canonicalize_version
 
 import ciconia
-from ciconia.pypi import models
+from ciconia.pypi import models, service
 
 PACKAGES = dict(
     sdist=next(Path("dist").glob("*.whl")),
@@ -18,7 +19,7 @@ PACKAGES = dict(
 FORM = {
     "name": "ciconia",
     "version": "0.1.0",
-    "filetype": None,
+    "filetype": "sdist",
     "pyversion": "",
     "metadata_version": "2.1",
     "summary": "Ciconia test package",
@@ -45,30 +46,51 @@ FORM = {
 }
 
 
-@pytest.yield_fixture(scope="function", params=PACKAGES)
-def dist(request):
-    pkg_type = request.param
-    file_ = PACKAGES[pkg_type]
-    form = FORM.copy()
-    form["filetype"] = pkg_type
-    form["sha256_digest"] = sha256sum(file_)
-    with file_.open("rb") as f:
-        form["file"] = f
-        yield form
+class PackageFactory:
+    def __init__(self, tmpdir):
+        self._tmpdir = tmpdir
+        self._fds = []
+
+    def new(self, **kwargs):
+        form = FORM.copy()
+        form.update(kwargs)
+        filename = self._tmpdir / "{name}-{version}.tar.gz".format(**form)
+        self._gen(filename)
+        form["sha256_digest"] = sha256sum(filename)
+        fd = filename.open("rb")
+        self._fds.append(fd)
+        form["file"] = open(filename, "rb")
+        return form
+
+    def _gen(self, path):
+        with path.open("w") as fd:
+            for _ in range(5):
+                fd.write(str(random.randint(1, 9)) * 1024)
+
+    def close_all(self):
+        for fd in self._fds:
+            fd.close()
+        self._fds.clear()
+
+
+@pytest.yield_fixture(scope="function")
+def packages(tmp_path):
+    factory = PackageFactory(tmp_path)
+    try:
+        yield factory
+    finally:
+        factory.close_all()
+
+
+@pytest.fixture(scope="function")
+def dist(packages):
+    return packages.new()
 
 
 @pytest.fixture
 def package(dist, db):
     file_ = dist.pop("file")
-    dist = models.Metadata(dist)
-    project = models.Project()
-    project.from_metadata(dist)
-    project.update_time()
-    project.save()
-    pkg = models.PackageFile(pkg=file_, metadata=dist)
-    pkg.project = project
-    pkg.save()
-    return pkg
+    return service.new_package(dist, file_)
 
 
 def sha256sum(pth: Path):
@@ -84,7 +106,7 @@ def test_readers(dist):
     pkg = models.PackageFile(pkg=file_, metadata=dist)
     origname = Path(file_.name).name
     assert pkg.filename == origname
-    assert pkg.fileobj.name == origname
+    assert Path(pkg.fileobj.name).name == origname
     # metadata accessing
     assert pkg.name == "ciconia"
     assert pkg.version == canonicalize_version(ciconia.__version__)

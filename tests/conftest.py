@@ -1,7 +1,6 @@
 import logging
 
 import pytest
-from django.test import RequestFactory
 
 from ciconia.users.models import User
 
@@ -21,11 +20,6 @@ def media_storage(settings, tmpdir):
 @pytest.fixture
 def client():
     return Client()
-
-
-@pytest.fixture
-def request_factory() -> RequestFactory:
-    return RequestFactory()
 
 
 @pytest.yield_fixture(autouse=True)

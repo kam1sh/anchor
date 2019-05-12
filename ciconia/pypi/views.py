@@ -5,14 +5,15 @@ import xmlrpc.server
 from xmlrpc.client import Fault
 
 from django import http
-from django.db import models, transaction
+from django.db import models
 from django.http import HttpResponseBadRequest as badrequest
 from django.shortcuts import render
 from django.views.decorators import csrf
 
 from ..common.exceptions import UserError
 from ..common.views import basic_auth
-from .models import Metadata, PackageFile, Project
+from .models import PackageFile, Project
+from . import service
 
 log = logging.getLogger(__name__)
 
@@ -37,40 +38,10 @@ def upload_package(request):
     If package with this filename already exists, it will be updated.
     """
     # cl = request.META["CONTENT_LENGTH"] # could be useful in the future
-    form = Metadata(request.POST)
-
-    # at first find the project to check permissions
-    try:
-        project = Project.objects.get(name=form.name)
-        # TODO check permissions
-    except Project.DoesNotExist:
-        # automatically create new project
-        project = Project()
-    project.from_metadata(form)
-    project.update_time()
-
-    # and then the file stuff
     raw_file = request.FILES.get("content")
     if not raw_file:
         return badrequest('Provide package within "content" file.')
-    # TODO check file size
-    try:
-        pkg_file = PackageFile.objects.get(filename=raw_file.name)
-    except PackageFile.DoesNotExist:
-        pkg_file = PackageFile()
-    pkg_file.metadata = form
-    pkg_file.update(raw_file)
-
-    log.debug("Form sha256: %s", form["sha256_digest"])
-    if pkg_file.sha256 != form["sha256_digest"]:
-        return badrequest("Hashsums does not match")
-
-    log.debug("Got package %s and project %s", pkg_file, project)
-
-    with transaction.atomic():
-        project.save()
-        pkg_file.project = project
-        pkg_file.save()
+    service.new_package(request.POST, raw_file)
     return http.HttpResponse("Package uploaded succesfully")
 
 

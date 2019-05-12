@@ -66,14 +66,17 @@ class Project(models.Model):
     # updated with the new package version
     info = models.TextField("Package information", null=True)
 
+    def __init__(self, *args, metadata=None):
+        super().__init__(*args)
+        if metadata:
+            self.from_metadata(metadata)
+
     def from_metadata(self, metadata: Metadata):
         """ Updates package info from pkg_file metadata. """
         self.name = metadata.name
         self.version = metadata.version
         self.summary = metadata.summary
         self.info = metadata.description
-
-    def update_time(self):
         self.updated = timezone.now()
 
     def __str__(self):
