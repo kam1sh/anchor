@@ -13,9 +13,9 @@ urlpatterns = [
     # Django Admin, use {% url 'admin:index' %}
     path(settings.ADMIN_URL, admin.site.urls),
     # User management
-    path("users/", include("ciconia.users.urls", namespace="users")),
+    path("users/", include("anchor.users.urls", namespace="users")),
     # Your stuff: custom urls includes go here
-    path("py/", include("ciconia.pypi.urls")),
+    path("py/", include("anchor.pypi.urls")),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
 if settings.DEBUG:

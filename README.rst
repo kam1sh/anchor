@@ -51,7 +51,7 @@ Tests
 ::
 
   $ pytest
-  $ mypy ciconia
+  $ mypy anchor
 
 With coverage:
 

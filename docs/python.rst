@@ -61,7 +61,7 @@ A few moments:
 - It's good to normalize names and versions with,
   for example, module pkg_resources and `packaging`_;
 
-Also, in case of ciconia, URI for upload is /py/upload.
+Also, in case of anchor, URI for upload is /py/upload.
 
 .. seealso::
 

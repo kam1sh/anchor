@@ -6,10 +6,8 @@ import sys
 
 import environ
 
-ROOT_DIR = (
-    environ.Path(__file__) - 3
-)  # (ciconia/config/settings/base.py - 3 = ciconia/)
-APPS_DIR = ROOT_DIR.path("ciconia")
+ROOT_DIR = environ.Path(__file__) - 3  # (anchor/config/settings/base.py - 3 = ciconia/)
+APPS_DIR = ROOT_DIR.path("anchor")
 
 env = environ.Env()
 
@@ -65,8 +63,8 @@ DJANGO_APPS = [
 ]
 THIRD_PARTY_APPS = ["crispy_forms", "rest_framework"]
 LOCAL_APPS = [
-    "ciconia.users.apps.UsersAppConfig",
-    "ciconia.pypi.apps.PypiConfig",
+    "anchor.users.apps.UsersAppConfig",
+    "anchor.pypi.apps.PypiConfig",
     # Your stuff: custom apps go here
 ]
 # https://docs.djangoproject.com/en/dev/ref/settings/#installed-apps
@@ -75,7 +73,7 @@ INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
 # MIGRATIONS
 # ------------------------------------------------------------------------------
 # https://docs.djangoproject.com/en/dev/ref/settings/#migration-modules
-MIGRATION_MODULES = {"sites": "ciconia.contrib.sites.migrations"}
+MIGRATION_MODULES = {"sites": "anchor.contrib.sites.migrations"}
 
 # AUTHENTICATION
 # ------------------------------------------------------------------------------
@@ -120,7 +118,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-    "ciconia.common.middleware.ExtraMiddleware",
+    "anchor.common.middleware.ExtraMiddleware",
 ]
 
 # STATIC
@@ -219,5 +217,5 @@ LOGGING = {
         "verbose": {"format": "%(asctime)s %(name)s [%(funcName)s] %(message)s"}
     },
     "handlers": {"console": {"class": "logging.StreamHandler", "formatter": "verbose"}},
-    "loggers": {"ciconia": {"level": "INFO"}},
+    "loggers": {"anchor": {"level": "INFO"}},
 }

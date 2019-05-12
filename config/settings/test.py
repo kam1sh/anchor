@@ -55,4 +55,4 @@ EMAIL_HOST = "localhost"
 # https://docs.djangoproject.com/en/dev/ref/settings/#email-port
 EMAIL_PORT = 1025
 
-LOGGING["loggers"]["ciconia"]["level"] = "DEBUG"
+LOGGING["loggers"]["anchor"]["level"] = "DEBUG"

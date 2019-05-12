@@ -163,7 +163,7 @@ html_static_path = ["_static"]
 # html_file_suffix = None
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = "ciconiadoc"
+htmlhelp_basename = "anchordoc"
 
 
 # -- Options for LaTeX output --------------------------------------------------
@@ -180,7 +180,7 @@ latex_elements = {
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title, author, documentclass [howto/manual]).
 latex_documents = [
-    ("index", "ciconia.tex", "Ciconia Documentation", """Igor Ovsyannikov""", "manual")
+    ("index", "anchor.tex", "Ciconia Documentation", """Igor Ovsyannikov""", "manual")
 ]
 
 # The name of an image file (relative to this directory) to place at the top of
@@ -208,7 +208,7 @@ latex_documents = [
 
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
-man_pages = [("index", "ciconia", "Ciconia Documentation", ["""Igor Ovsyannikov"""], 1)]
+man_pages = [("index", "anchor", "Ciconia Documentation", ["""Igor Ovsyannikov"""], 1)]
 
 # If true, show URL addresses after external links.
 # man_show_urls = False
@@ -222,7 +222,7 @@ man_pages = [("index", "ciconia", "Ciconia Documentation", ["""Igor Ovsyannikov"
 texinfo_documents = [
     (
         "index",
-        "ciconia",
+        "anchor",
         "Ciconia Documentation",
         """Igor Ovsyannikov""",
         "Ciconia",

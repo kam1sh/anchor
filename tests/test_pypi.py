@@ -8,8 +8,8 @@ import pytest
 from django.core.files.uploadedfile import File
 from packaging.utils import canonicalize_version
 
-import ciconia
-from ciconia.pypi import models, service
+import anchor
+from anchor.pypi import models, service
 
 PACKAGES = dict(
     sdist=next(Path("dist").glob("*.whl")),
@@ -17,7 +17,7 @@ PACKAGES = dict(
 )
 
 FORM = {
-    "name": "ciconia",
+    "name": "anchor",
     "version": "0.1.0",
     "filetype": "sdist",
     "pyversion": "",
@@ -108,8 +108,8 @@ def test_readers(dist):
     assert pkg.filename == origname
     assert Path(pkg.fileobj.name).name == origname
     # metadata accessing
-    assert pkg.name == "ciconia"
-    assert pkg.version == canonicalize_version(ciconia.__version__)
+    assert pkg.name == "anchor"
+    assert pkg.version == canonicalize_version(anchor.__version__)
     assert isinstance(pkg.metadata["requires_dist"], list)
 
 

@@ -5,7 +5,7 @@ import pytest
 from django.http.request import QueryDict
 from django.test import RequestFactory as Requests
 
-from ciconia.common import middleware
+from anchor.common import middleware
 
 
 def test_serialize_response():

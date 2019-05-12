@@ -63,6 +63,6 @@ if env("USE_DOCKER", default="no") == "yes":
 # https://django-extensions.readthedocs.io/en/latest/installation_instructions.html#configuration
 INSTALLED_APPS += ["django_extensions"]  # noqa F405
 
-LOGGING["loggers"]["ciconia"]["level"] = "DEBUG"
+LOGGING["loggers"]["anchor"]["level"] = "DEBUG"
 if len(sys.argv) > 1 and sys.argv[1] == "runserver":
-    LOGGING["loggers"]["ciconia"]["handlers"] = ["console"]
+    LOGGING["loggers"]["anchor"]["handlers"] = ["console"]

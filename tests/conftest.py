@@ -2,14 +2,14 @@ import logging
 
 import pytest
 
-from ciconia.users.models import User
+from anchor.users.models import User
 
 from . import Client
 
 
 def pytest_configure():
     # removes StreamHandler to avoid double logging (in stderr and pytest)
-    logging.getLogger("ciconia").handlers = []
+    logging.getLogger("anchor").handlers = []
 
 
 @pytest.fixture(autouse=True)
