@@ -19,17 +19,18 @@ def test_serialize_response():
     assert json.loads(response)
 
 
-@pytest.mark.skip("Dataclasses is not supported yet.")
 def test_process_dataclass():
     @dataclass
     class DataClass:
         number: int
 
+    post = QueryDict("number=1")
+    middleware.bind_form(post, DataClass)
+
     def view(request, post: DataClass):
         assert post
         assert post.number == 1
 
-    data = QueryDict("number=1")
-    req = Requests().post("/test/", data=data)
+    req = Requests().post("/test/", data=post)
     mw = middleware.ExtraMiddleware()
     mw.process_view(req, view, [], {})
