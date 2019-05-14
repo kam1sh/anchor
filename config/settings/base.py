@@ -65,7 +65,7 @@ THIRD_PARTY_APPS = ["crispy_forms", "rest_framework"]
 LOCAL_APPS = [
     "anchor.users.apps.UsersAppConfig",
     "anchor.pypi.apps.PypiConfig",
-    # Your stuff: custom apps go here
+    "anchor.packages.apps.PackagesConfig",
 ]
 # https://docs.djangoproject.com/en/dev/ref/settings/#installed-apps
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS

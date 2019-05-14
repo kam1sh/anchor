@@ -17,6 +17,7 @@ from django.db import models
 from django.shortcuts import reverse
 from django.utils import timezone
 
+from ..packages.models import PackageTypes, Package
 from ..common.exceptions import UserError
 
 __all__ = ["Metadata", "Project", "PackageFile"]
@@ -49,29 +50,12 @@ class Metadata:
             raise UserError(f"Name {self.name!r} conflicts with Python stdlib.")
 
 
-class Project(models.Model):
-    name = models.CharField(max_length=64, db_index=True)
-    version = models.CharField("Latest version", max_length=16)
-    summary = models.TextField(null=True)
-    updated = models.DateTimeField("Last updated")
-    # updated with the new package version
-    info = models.TextField("Package information", null=True)
+class Project(Package):
+    """Python project (set of packages)"""
 
-    def __init__(self, *args, metadata=None):
+    def __init__(self, *args):
         super().__init__(*args)
-        if metadata:
-            self.from_metadata(metadata)
-
-    def from_metadata(self, metadata: Metadata):
-        """ Updates package info from pkg_file metadata. """
-        self.name = metadata.name
-        self.version = metadata.version
-        self.summary = metadata.summary
-        self.info = metadata.description
-        self.updated = timezone.now()
-
-    def __str__(self):
-        return self.name + " " + self.version
+        pkg_type = PackageTypes.Python
 
 
 class PackageFile(models.Model):
