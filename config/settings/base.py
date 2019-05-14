@@ -6,7 +6,7 @@ import sys
 
 import environ
 
-ROOT_DIR = environ.Path(__file__) - 3  # (anchor/config/settings/base.py - 3 = ciconia/)
+ROOT_DIR = environ.Path(__file__) - 3  # (anchor/config/settings/base.py - 3 = anchor/)
 APPS_DIR = ROOT_DIR.path("anchor")
 
 env = environ.Env()

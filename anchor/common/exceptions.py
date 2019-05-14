@@ -1,5 +1,5 @@
 class ServiceError(Exception):
-    """Basic Ciconia exception"""
+    """Basic anchor exception"""
 
     status_code = 500
 

@@ -1,7 +1,6 @@
 import json
 from dataclasses import dataclass
 
-import pytest
 from django.http.request import QueryDict
 from django.test import RequestFactory as Requests
 

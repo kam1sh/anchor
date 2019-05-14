@@ -22,7 +22,7 @@ FORM = {
     "filetype": "sdist",
     "pyversion": "",
     "metadata_version": "2.1",
-    "summary": "Ciconia test package",
+    "summary": "anchor test package",
     "home_page": "",
     "author": "Igor Ovsyannikov",
     "author_email": "kamish@outlook.com",

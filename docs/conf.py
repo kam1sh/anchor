@@ -1,4 +1,4 @@
-# Ciconia documentation build configuration file, created by
+# anchor documentation build configuration file, created by
 # sphinx-quickstart.
 #
 # This file is execfile()d with the current directory set to its containing dir.
@@ -39,7 +39,7 @@ source_suffix = ".rst"
 master_doc = "index"
 
 # General information about the project.
-project = "Ciconia"
+project = "anchor"
 copyright = """2019, Igor Ovsyannikov"""
 
 # The version info for the project you're documenting, acts as replacement for
@@ -180,7 +180,7 @@ latex_elements = {
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title, author, documentclass [howto/manual]).
 latex_documents = [
-    ("index", "anchor.tex", "Ciconia Documentation", """Igor Ovsyannikov""", "manual")
+    ("index", "anchor.tex", "anchor Documentation", """Igor Ovsyannikov""", "manual")
 ]
 
 # The name of an image file (relative to this directory) to place at the top of
@@ -208,7 +208,7 @@ latex_documents = [
 
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
-man_pages = [("index", "anchor", "Ciconia Documentation", ["""Igor Ovsyannikov"""], 1)]
+man_pages = [("index", "anchor", "anchor Documentation", ["""Igor Ovsyannikov"""], 1)]
 
 # If true, show URL addresses after external links.
 # man_show_urls = False
@@ -223,9 +223,9 @@ texinfo_documents = [
     (
         "index",
         "anchor",
-        "Ciconia Documentation",
+        "anchor Documentation",
         """Igor Ovsyannikov""",
-        "Ciconia",
+        "anchor",
         """Repository for python, debian and other packages with one REST API to rule them all.""",
         "Miscellaneous",
     )
