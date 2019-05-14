@@ -108,16 +108,22 @@ def bind_form(data: dict, cls, signature: inspect.Signature = None):
         if key == "request":
             continue
         annotation = param.annotation
-        val = data[key]
+        val = getval(data, key)
         kwargs[key] = convert_arg(val, annotation)
     if dataclasses.is_dataclass(cls):
         return cls(**kwargs)
     raise exceptions.ServiceError("Failed to bind form")
 
 
+def getval(data, key):
+    if hasattr(data, "getlist"):
+        return data.getlist(key)
+    return data[key]
+
+
 def convert_arg(arg: ty.List[str], val_type: type):
-    if val_type == str:
+    if val_type in {str, "str"}:
         return arg[0]
-    if val_type not in [ty.Iterable]:
-        return val_type(arg[0])
-    return [val_type(x) for x in arg]
+    if val_type in [ty.Iterable]:
+        return [val_type(x) for x in arg]
+    return val_type(arg[0])

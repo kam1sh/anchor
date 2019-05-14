@@ -9,11 +9,10 @@ __all__ = ["new_package"]
 log = logging.getLogger(__name__)
 
 
-def new_package(metadata: dict, fd):
+def new_package(form: Metadata, fd):
     """
     Creates new package and project records if necessary.
     """
-    form = Metadata(metadata)
 
     # at first find the project to check permissions
     try:

@@ -12,7 +12,7 @@ from django.views.decorators import csrf
 
 from ..common.exceptions import UserError
 from ..common.views import basic_auth
-from .models import PackageFile, Project
+from .models import Metadata, PackageFile, Project
 from . import service
 
 log = logging.getLogger(__name__)
@@ -32,7 +32,7 @@ allowed_files = re.compile(r".+\.(tar\.gz|zip|whl|egg)$", re.I)
 
 @csrf.csrf_exempt
 @basic_auth
-def upload_package(request):
+def upload_package(request, post: Metadata):
     """
     Uploads new package to the server.
     If package with this filename already exists, it will be updated.
@@ -41,7 +41,7 @@ def upload_package(request):
     raw_file = request.FILES.get("content")
     if not raw_file:
         return badrequest('Provide package within "content" file.')
-    service.new_package(request.POST, raw_file)
+    service.new_package(post, raw_file)
     return http.HttpResponse("Package uploaded succesfully")
 
 

@@ -10,11 +10,9 @@ from packaging.utils import canonicalize_version
 
 import anchor
 from anchor.pypi import models, service
+from anchor.pypi.models import Metadata
 
-PACKAGES = dict(
-    sdist=next(Path("dist").glob("*.whl")),
-    bdist_wheel=next(Path("dist").glob("*.tar.gz")),
-)
+from . import to_dataclass
 
 FORM = {
     "name": "anchor",
@@ -90,7 +88,7 @@ def dist(packages):
 @pytest.fixture
 def package(dist, db):
     file_ = dist.pop("file")
-    return service.new_package(dist, file_)
+    return service.new_package(to_dataclass(dist, Metadata), file_)
 
 
 def sha256sum(pth: Path):
@@ -103,14 +101,14 @@ def sha256sum(pth: Path):
 def test_readers(dist):
     """Tests for package reading (wheel and tar.gz)"""
     file_ = dist.pop("file")
-    pkg = models.PackageFile(pkg=file_, metadata=dist)
+    form = to_dataclass(dist, Metadata)
+    pkg = models.PackageFile(pkg=file_, metadata=form)
     origname = Path(file_.name).name
     assert pkg.filename == origname
     assert Path(pkg.fileobj.name).name == origname
     # metadata accessing
     assert pkg.name == "anchor"
     assert pkg.version == canonicalize_version(anchor.__version__)
-    assert isinstance(pkg.metadata["requires_dist"], list)
 
 
 def test_upload(dist, client, db):

@@ -1,12 +1,11 @@
 from __future__ import annotations
 
+import dataclasses
 import hashlib
 import json
 import logging
 import re
-import tarfile
 import typing as ty
-import zipfile
 from pathlib import Path
 
 import packaging.utils
@@ -15,7 +14,6 @@ import stdlib_list
 from django.conf import settings
 from django.core import files
 from django.db import models
-from django.http import QueryDict
 from django.shortcuts import reverse
 from django.utils import timezone
 
@@ -32,30 +30,23 @@ allowed_files = re.compile(r".+\.(tar\.gz|whl)$", re.I)
 EMPTY_SHA256 = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
 
 
-class Metadata(dict):
-    """ Dict with a few checks for django QueryDict and version formatting. """
+@dataclasses.dataclass
+class Metadata:
+    """ Dataclass with a few extra checks. """
 
-    def __init__(self, form: dict = None):
-        if isinstance(form, QueryDict):
-            super().__init__()
-            for key in form:
-                if key in {"classifiers", "requires_dist"}:
-                    self[key] = form.getlist(key)
-                else:
-                    self[key] = form[key]
-        else:
-            super().__init__(**form)
-        self["name"] = pkg_resources.safe_name(self["name"])
-        self["version"] = packaging.utils.canonicalize_version(self["version"])
-        if self["name"] in prohibited_packages:
+    name: str
+    version: str
+    filetype: str
+    metadata_version: str
+    summary: str
+    description: str
+    sha256_digest: str
+
+    def __post_init__(self):
+        self.name = pkg_resources.safe_name(self.name)
+        self.version = packaging.utils.canonicalize_version(self.version)
+        if self.name in prohibited_packages:
             raise UserError(f"Name {self.name!r} conflicts with Python stdlib.")
-
-    def __getattr__(self, name):
-        try:
-            return self[name]
-        except KeyError as e:
-            pass
-        raise AttributeError(name)
 
 
 class Project(models.Model):
@@ -104,13 +95,12 @@ class PackageFile(models.Model):
     def metadata(self) -> Metadata:
         if not self._metadata:
             raise ValueError("No metadata available")
-        return Metadata(json.loads(self._metadata))
+        return Metadata(**json.loads(self._metadata))
 
     @metadata.setter
-    def metadata(self, raw: dict):
-        val = Metadata(raw)
+    def metadata(self, val: Metadata):
         self.pkg_type = val.filetype
-        self._metadata = json.dumps(val)
+        self._metadata = json.dumps(val.__dict__)
 
     @property
     def link(self):
@@ -136,7 +126,7 @@ class PackageFile(models.Model):
         self.sha256 = m.hexdigest()
         if self.sha256 == EMPTY_SHA256:
             raise UserError("Empty file")
-        if self.sha256 != self.metadata["sha256_digest"]:
+        if self.sha256 != self.metadata.sha256_digest:
             raise UserError("Form digest does not match hashsum from the file")
         log.debug("%s sha256: %s", self.filename, self.sha256)
 
@@ -155,8 +145,4 @@ class PackageFile(models.Model):
         return self.filename
 
     def __getattr__(self, name):
-        try:
-            return self.metadata[name]
-        except KeyError as e:
-            pass
-        raise AttributeError(name)
+        return getattr(self.metadata, name)

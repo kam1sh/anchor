@@ -38,3 +38,9 @@ class Response:
 
     def __str__(self):
         return str(self.orig)
+
+
+def to_dataclass(data: dict, cls: type):
+    """Converts dict to dataclass."""
+    data = {k: v for k, v in data.items() if k in cls.__annotations__}
+    return cls(**data)
