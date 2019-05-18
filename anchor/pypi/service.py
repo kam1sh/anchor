@@ -2,7 +2,7 @@ import logging
 
 from django.db import transaction
 
-from .models import Metadata, Project, PackageFile
+from .models import Metadata, PackageFile, Project
 
 __all__ = ["new_package"]
 
@@ -15,6 +15,7 @@ def new_package(form: Metadata, fd):
     """
 
     # at first find the project to check permissions
+    # TODO use get_or_create()?
     try:
         project = Project.objects.get(name=form.name)
         # TODO check permissions
@@ -34,6 +35,6 @@ def new_package(form: Metadata, fd):
 
     with transaction.atomic():
         project.save()
-        pkg_file.project = project
+        pkg_file.package = project
         pkg_file.save()
     return pkg_file

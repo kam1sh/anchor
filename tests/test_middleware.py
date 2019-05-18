@@ -1,10 +1,9 @@
 import json
 from dataclasses import dataclass
 
+from anchor.common import middleware
 from django.http.request import QueryDict
 from django.test import RequestFactory as Requests
-
-from anchor.common import middleware
 
 
 def test_serialize_response():

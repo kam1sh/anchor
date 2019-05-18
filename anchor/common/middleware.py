@@ -3,8 +3,8 @@ from __future__ import annotations
 import dataclasses
 import functools
 import inspect
-import typing as ty
 import logging
+import typing as ty
 
 from django.http import HttpResponse
 from django.http.response import HttpResponseBase
@@ -16,6 +16,7 @@ log = logging.getLogger(__name__)
 
 @functools.lru_cache()
 def cached_signature(cls):
+    # https://docs.python.org/3/library/inspect.html#inspect.Signature
     return inspect.signature(cls)
 
 
@@ -122,6 +123,9 @@ def getval(data, key):
 
 
 def convert_arg(arg: ty.List[str], val_type: type):
+    # check in case of tests that passes usual dicts
+    if not isinstance(arg, list):
+        arg = [arg]
     if val_type in {str, "str"}:
         return arg[0]
     if val_type in [ty.Iterable]:

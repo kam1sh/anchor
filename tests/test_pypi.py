@@ -4,15 +4,15 @@ import subprocess
 import xmlrpc.client
 from pathlib import Path
 
+import anchor
 import pytest
+from anchor.common.middleware import bind_form
+from anchor.pypi import models, service
+from anchor.pypi.models import Metadata
 from django.core.files.uploadedfile import File
 from packaging.utils import canonicalize_version
 
-import anchor
-from anchor.pypi import models, service
-from anchor.pypi.models import Metadata
-
-from . import to_dataclass
+from . import PackageFactory
 
 FORM = {
     "name": "anchor",
@@ -44,36 +44,28 @@ FORM = {
 }
 
 
-class PackageFactory:
-    def __init__(self, tmpdir):
-        self._tmpdir = tmpdir
-        self._fds = []
-
-    def new(self, **kwargs):
+class PyPackageFactory(PackageFactory):
+    def new_form(self, **kwargs):
+        """ Creates new form with a file """
         form = FORM.copy()
         form.update(kwargs)
-        filename = self._tmpdir / "{name}-{version}.tar.gz".format(**form)
-        self._gen(filename)
+        filename = self._gen("{name}-{version}.tar.gz".format(**form))
         form["sha256_digest"] = sha256sum(filename)
         fd = filename.open("rb")
         self._fds.append(fd)
-        form["file"] = open(filename, "rb")
+        form["file"] = fd
         return form
 
-    def _gen(self, path):
-        with path.open("w") as fd:
-            for _ in range(5):
-                fd.write(str(random.randint(1, 9)) * 1024)
-
-    def close_all(self):
-        for fd in self._fds:
-            fd.close()
-        self._fds.clear()
+    def new(self, **kwargs):
+        """ Create new package. """
+        form = self.new_form(**kwargs)
+        file_ = form.pop("file")
+        return service.new_package(bind_form(form, Metadata), file_)
 
 
 @pytest.yield_fixture(scope="function")
-def packages(tmp_path):
-    factory = PackageFactory(tmp_path)
+def pypackages(tmp_path):
+    factory = PyPackageFactory(tmp_path)
     try:
         yield factory
     finally:
@@ -81,14 +73,13 @@ def packages(tmp_path):
 
 
 @pytest.fixture(scope="function")
-def dist(packages):
-    return packages.new()
+def dist(pypackages):
+    return pypackages.new_form()
 
 
 @pytest.fixture
-def package(dist, db):
-    file_ = dist.pop("file")
-    return service.new_package(to_dataclass(dist, Metadata), file_)
+def package(pypackages, db):
+    return pypackages.new()
 
 
 def sha256sum(pth: Path):
@@ -101,7 +92,7 @@ def sha256sum(pth: Path):
 def test_readers(dist):
     """Tests for package reading (wheel and tar.gz)"""
     file_ = dist.pop("file")
-    form = to_dataclass(dist, Metadata)
+    form = bind_form(dist, Metadata)
     pkg = models.PackageFile(pkg=file_, metadata=form)
     origname = Path(file_.name).name
     assert pkg.filename == origname

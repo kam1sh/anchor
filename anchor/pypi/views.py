@@ -12,8 +12,8 @@ from django.views.decorators import csrf
 
 from ..common.exceptions import UserError
 from ..common.views import basic_auth
-from .models import Metadata, PackageFile, Project
 from . import service
+from .models import Metadata, PackageFile, Project
 
 log = logging.getLogger(__name__)
 
@@ -52,7 +52,7 @@ def list_projects(request):
 
 def list_files(request, name: str):
     """ Returns page with list of all existing files for the package. """
-    result = PackageFile.objects.filter(project__name=name)
+    result = PackageFile.objects.filter(package__name=name)
     return render(
         request, "files.html", dict(title=f"{name.capitalize()} files", files=result)
     )

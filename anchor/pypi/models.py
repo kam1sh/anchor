@@ -15,10 +15,9 @@ from django.conf import settings
 from django.core import files
 from django.db import models
 from django.shortcuts import reverse
-from django.utils import timezone
 
-from ..packages.models import PackageTypes, Package
 from ..common.exceptions import UserError
+from ..packages import models as base_models
 
 __all__ = ["Metadata", "Project", "PackageFile"]
 
@@ -32,14 +31,11 @@ EMPTY_SHA256 = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
 
 
 @dataclasses.dataclass
-class Metadata:
+class Metadata(base_models.Metadata):
     """ Dataclass with a few extra checks. """
 
-    name: str
-    version: str
     filetype: str
     metadata_version: str
-    summary: str
     description: str
     sha256_digest: str
 
@@ -50,18 +46,31 @@ class Metadata:
             raise UserError(f"Name {self.name!r} conflicts with Python stdlib.")
 
 
-class Project(Package):
+class Project(base_models.Package):
     """Python project (set of packages)"""
 
     def __init__(self, *args):
         super().__init__(*args)
-        pkg_type = PackageTypes.Python
+        self.pkg_type = base_models.PackageTypes.Python
 
 
-class PackageFile(models.Model):
-    project = models.ForeignKey(Project, on_delete=models.CASCADE)
-    filename = models.CharField(max_length=64, unique=True)
-    fileobj = models.FileField(upload_to="pypi")
+class ShaReader:
+    """ Wrapper around binary reader with sha256 computing. """
+
+    def __init__(self, src):
+        self.src = src
+        self.sha256 = hashlib.sha256()
+
+    def __iter__(self):
+        for chunk in iter(lambda: self.src.read(2 ** 10), b""):
+            self.sha256.update(chunk)
+            yield chunk
+
+    def __getattr__(self, name):
+        return getattr(self.src, name)
+
+
+class PackageFile(base_models.PackageFile):
     pkg_type = models.CharField(max_length=16)
     sha256 = models.CharField(max_length=64, unique=True)
     _metadata = models.TextField()
@@ -84,6 +93,7 @@ class PackageFile(models.Model):
     @metadata.setter
     def metadata(self, val: Metadata):
         self.pkg_type = val.filetype
+        self.version = val.version
         self._metadata = json.dumps(val.__dict__)
 
     @property
@@ -95,21 +105,13 @@ class PackageFile(models.Model):
         if self.filename or self.fileobj.name:
             return Path(settings.MEDIA_ROOT, self.fileobj.name or self.filename)
 
-    @property
-    def size(self) -> int:
-        return self.path.stat().st_size
-
-    def update(self, src: ty.io.TextIO):
+    def update(self, src: ty.io.BinaryIO, filename=None):
         if self.path and self.path.exists():
             self.path.unlink()
-        self._extract_name(src)
-        self.fileobj = files.File(src, name=self.filename)
-        m = hashlib.sha256()
-        for chunk in iter(lambda: src.read(2 ** 10), b""):
-            m.update(chunk)
-        self.sha256 = m.hexdigest()
-        if self.sha256 == EMPTY_SHA256:
-            raise UserError("Empty file")
+        self._extract_name(src, filename=filename)
+        reader = ShaReader(src)
+        super().update(reader, filename=self.filename)
+        self.sha256 = reader.sha256.hexdigest()
         if self.sha256 != self.metadata.sha256_digest:
             raise UserError("Form digest does not match hashsum from the file")
         log.debug("%s sha256: %s", self.filename, self.sha256)

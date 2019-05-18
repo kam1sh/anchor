@@ -1,10 +1,9 @@
 import logging
 
 import pytest
-
 from anchor.users.models import User
 
-from . import Client
+from . import Client, PackageFactory
 
 
 def pytest_configure():
@@ -22,13 +21,19 @@ def client():
     return Client()
 
 
-@pytest.yield_fixture(autouse=True)
+@pytest.fixture(autouse=True)
 def user(db):
     usr = User()
     usr.email = "test@localhost"
     usr.set_password("123")
     usr.save()
+    return usr
+
+
+@pytest.yield_fixture(scope="function")
+def packages(tmp_path):
+    factory = PackageFactory(tmp_path)
     try:
-        yield
+        yield factory
     finally:
-        usr.delete()
+        factory.close_all()

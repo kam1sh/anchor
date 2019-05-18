@@ -1,7 +1,19 @@
+import dataclasses
 import enum
+import functools
+import json
+import logging
+import typing
+from datetime import datetime, timedelta
+from pathlib import Path
 
-from django.utils import timezone
+from django.core import files
 from django.db import models
+from django.utils import timezone
+
+from ..common.exceptions import UserError
+
+log = logging.getLogger(__name__)
 
 
 class PackageTypes(enum.Enum):
@@ -11,16 +23,32 @@ class PackageTypes(enum.Enum):
     Docker = "docker"
 
 
+@dataclasses.dataclass
+class Metadata:
+    """ Package file metadata. """
+
+    name: str
+    version: str
+    summary: str
+    description: str
+
+
 class Package(models.Model):
+    """Base model that represents common package information."""
+
     pkg_type = models.CharField(
         max_length=16, db_index=True, choices=[(tag, tag.value) for tag in PackageTypes]
     )
     name = models.CharField(max_length=64, db_index=True)
-    version = models.CharField("Latest version", max_length=16)
+    version = models.CharField("Latest version", max_length=64)
     summary = models.TextField(null=True)
     updated = models.DateTimeField("Last updated")
     # updated with the new package version
-    info = models.TextField("Package information", null=True)
+    description = models.TextField("Description", null=True)
+
+    class Meta:
+        unique_together = ["pkg_type", "name"]
+        # index_together?
 
     def __init__(self, *args, metadata=None):
         super().__init__(*args)
@@ -28,12 +56,127 @@ class Package(models.Model):
             self.from_metadata(metadata)
 
     def from_metadata(self, metadata):
-        """ Updates package info from pkg_file metadata. """
+        """Updates package info from pkg_file metadata."""
         self.name = metadata.name
         self.version = metadata.version
         self.summary = metadata.summary
-        self.info = metadata.description
+        self.description = metadata.description
+        self.update_time()
+
+    def update_time(self):
         self.updated = timezone.now()
 
     def __str__(self):
         return self.name + " " + self.version
+
+
+class PackageFile(models.Model):
+    """Package file representation. Bound to the package."""
+
+    package = models.ForeignKey(Package, on_delete=models.CASCADE)
+    filename = models.CharField(max_length=64, unique=True)
+    fileobj = models.FileField()
+    size = models.IntegerField()
+    version = models.CharField(max_length=64)
+    uploaded = models.DateTimeField()
+
+    def update(self, src, filename=None):
+        if not isinstance(src, typing.Iterable):
+            src = iter(lambda: src.read(2 ** 10), b"")
+        self.fileobj = files.File(src)
+        self.filename = filename or Path(src.name).name
+        size = 0
+        for chunk in src:
+            size += len(chunk)
+        if not size:
+            raise UserError("Empty file")
+        self.size = size
+        self.uploaded = timezone.now()
+
+    def __str__(self):
+        return self.filename
+
+
+class RetentionPolicy(models.Model):
+    # right now anchor project is not so big to have reasons for many to many everywhere
+    # applied_to = models.ManyToManyField(Package, null=True)
+    applied_to = models.ForeignKey(Package, on_delete=models.CASCADE)
+    _criteria = models.TextField("Retention settings (JSON)")
+    schedule = None
+
+    def __init__(self, *args):
+        super().__init__(*args)
+        self.criteria = json.loads(self._criteria or "{}")
+        self.criteria.setdefault("keep", [])
+        self.criteria.setdefault("drop", [])
+
+    def for_pkg(self, pkg_type: PackageTypes, name: str):
+        target = Package.objects.get(pkg_type=pkg_type, name=name)
+        self.applied_to = target
+
+    def keep(
+        self, regexp: str = None, before_age: timedelta = None, size_less: int = None
+    ):
+        """
+        Parameters that define conditions when files should be keep.
+        This parameter has a higher priority over `drop`.
+        """
+        self.criteria["keep"].append(
+            dict(regexp=regexp, before_age=before_age, size_less=size_less)
+        )
+
+    def drop(
+        self, regexp: str = None, after_age: timedelta = None, size_exceeds: int = None
+    ):
+        self.criteria["drop"].append(
+            dict(regexp=regexp, after_age=after_age, size_exceeds=size_exceeds)
+        )
+
+    def every(self, time: timedelta):
+        self.schedule = time
+
+    _pol_mapping = {
+        "regexp": "version__iregex",
+        "before_age": "uploaded__lt",
+        "after_age": "uploaded__gt",
+        "size_less": "size__lt",
+        "size_exceeds": "size__gt",
+    }
+
+    def run(self, check=False):
+        packages = PackageFile.objects.filter(package=self.applied_to)
+        # this could be rewritten in sequence generator, but then it'll be hard to debug =/
+        drop = self._reduce_policies(self.criteria["drop"])
+        keep = self._reduce_policies(self.criteria["keep"])
+        # TODO drop only if setting enabled and by soft/hard policy settings?
+        log.debug("Queries:\n%s;\n%s", drop, keep)
+        log.debug("Initial: %s", packages)
+        packages = packages.filter(drop)
+        log.debug("Filtered: %s", packages)
+        packages = packages.exclude(keep)
+        log.debug("Excluded: %s", packages.query)
+        if check:
+            return packages
+        packages.delete()
+
+    def _reduce_policies(self, policies: list) -> models.Q:
+        out = []
+        for policy in policies:
+            param = {
+                self._pol_mapping[key]: value
+                for key, value in policy.items()
+                if value is not None
+            }
+            out.append(models.Q(**param))
+        return functools.reduce(lambda x, y: x | y, out, models.Q())
+
+    def save(
+        self, force_insert=False, force_update=False, using=None, update_fields=None
+    ):
+        self._criteria = json.dumps(self._criteria)
+        super().save(
+            force_insert=force_insert,
+            force_update=force_update,
+            using=using,
+            update_fields=update_fields,
+        )

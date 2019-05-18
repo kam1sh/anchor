@@ -36,6 +36,7 @@ def _(data: models.Model = None, **kwargs):
 @jsonify.register(QuerySet)
 def _(data: QuerySet = None, **kwargs):
     fields = _process_kwargs(data.model._meta, kwargs)
+    # TODO use .values()?
     items = [_model_to_dict(x, fields) for x in data]
     return JsonResponse5(dict(items=items))
 
