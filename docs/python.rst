@@ -1,4 +1,4 @@
-Python package index
+Python repository
 ========================
 
 TL;DR
@@ -74,10 +74,11 @@ Also, in case of anchor, URI for upload is /py/upload.
 .. _`packaging`: https://github.com/pypa/packaging
 .. _`specification`: https://packaging.python.org/specifications/core-metadata/
 
-XML RPC
+Search
 ^^^^^^^
 
-Warehouse has `a bunch`_ of `XML RPC`_ methods, but for pip
+There is also search method, that works via `XML RPC`_.
+Warehouse has `a bunch`_ of XML RPC, but for pip
 implementation of ``search(spec[, operator])`` is enough.
 Description of arguments:
 
@@ -87,7 +88,7 @@ Description of arguments:
 For example, ``search({'name': ['foo'], 'summary': ['foo']}, 'or')``
 could be translated as "all packages that name or summary contains 'foo'".
 
-Also, function should return list of dictionaries that has fields
+Also, function should return list of dictionaries with fields
 "name", "version" and "summary".
 Warehouse implementation returns at most 100 packages.
 
@@ -102,7 +103,7 @@ Warehouse implementation returns at most 100 packages.
     - `PEP 440`_, Version identification;
     - `PEP 241`_, Metadata for packages;
     - `PEP 426`_, Metadata for packages 2.0 (withdrawned)
-    - packaging.python.org;
+    - https://packaging.python.org;
     - `DevPI`_ is also interesting example;
 
 .. _`Warehouse`: https://github.com/pypa/warehouse

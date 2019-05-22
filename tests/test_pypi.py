@@ -44,6 +44,12 @@ FORM = {
 }
 
 
+def sha256sum(pth: Path):
+    return subprocess.check_output(
+        ["sha256sum", pth.absolute()], encoding="utf-8"
+    ).split()[0]
+
+
 class PyPackageFactory(PackageFactory):
     def new_form(self, **kwargs):
         """ Creates new form with a file """
@@ -53,17 +59,22 @@ class PyPackageFactory(PackageFactory):
         form["sha256_digest"] = sha256sum(filename)
         fd = filename.open("rb")
         self._fds.append(fd)
-        form["file"] = fd
+        form["content"] = File(fd)
         return form
 
     def new(self, **kwargs):
         """ Create new package. """
         form = self.new_form(**kwargs)
-        file_ = form.pop("file")
+        file_ = form.pop("content")
         return service.new_package(bind_form(form, Metadata), file_)
 
 
-@pytest.yield_fixture(scope="function")
+############
+# fixtures #
+############
+
+
+@pytest.yield_fixture
 def pypackages(tmp_path):
     factory = PyPackageFactory(tmp_path)
     try:
@@ -72,8 +83,8 @@ def pypackages(tmp_path):
         factory.close_all()
 
 
-@pytest.fixture(scope="function")
-def dist(pypackages):
+@pytest.fixture
+def form(pypackages):
     return pypackages.new_form()
 
 
@@ -82,17 +93,28 @@ def package(pypackages, db):
     return pypackages.new()
 
 
-def sha256sum(pth: Path):
-    return subprocess.check_output(
-        ["sha256sum", pth.absolute()], encoding="utf-8"
-    ).split()[0]
+@pytest.fixture
+def upload(client, db):
+    def uploader(form, auth=None, **kwargs):
+        if auth:
+            kwargs["HTTP_AUTHORIZATION"] = "Basic: {}".format(
+                base64.b64encode(auth.encode()).decode()
+            )
+        return client.post("/py/upload/", form, **kwargs)
+
+    return uploader
+
+
+#########
+# tests #
+#########
 
 
 @pytest.mark.unit
-def test_readers(dist):
+def test_readers(form):
     """Tests for package reading (wheel and tar.gz)"""
-    file_ = dist.pop("file")
-    form = bind_form(dist, Metadata)
+    file_ = form.pop("content")
+    form = bind_form(form, Metadata)
     pkg = models.PackageFile(pkg=file_, metadata=form)
     origname = Path(file_.name).name
     assert pkg.filename == origname
@@ -102,14 +124,12 @@ def test_readers(dist):
     assert pkg.version == canonicalize_version(anchor.__version__)
 
 
-def test_upload(dist, client, db):
-    form = dist
-    dist = dist.pop("file")
-    form["content"] = File(dist)
-    auth = "Basic: {}".format(base64.b64encode(b"test@localhost:123").decode())
-    assert client.post("/py/upload/", form) == 401
-    dist.seek(0)
-    response = client.post("/py/upload/", form, HTTP_AUTHORIZATION=auth)
+def test_anonymous_upload(form, upload):
+    assert upload(form) == 401
+
+
+def test_upload(form, upload):
+    response = upload(form, auth="test@localhost:123")
     print(response.content)
     assert response == 200
 
@@ -134,3 +154,9 @@ def test_lists(package, client):
     resp = client.get(f"/py/simple/{name}/")
     assert resp == 200
     assert package.filename in resp.content.decode()
+
+
+@pytest.mark.skip("TODO")
+def test_upload_permission(form, upload):
+    response = upload(form)
+    assert response != 200
