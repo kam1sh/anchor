@@ -10,8 +10,10 @@ from pathlib import Path
 from django.core import files
 from django.db import models
 from django.utils import timezone
+from guardian.models import UserObjectPermission
 
 from ..common.exceptions import UserError
+from ..users.models import User
 
 log = logging.getLogger(__name__)
 
@@ -33,7 +35,30 @@ class Metadata:
     description: str
 
 
-class Package(models.Model):
+class PermissionAware(models.Model):
+    owner = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+
+    class Meta:
+        abstract = True
+
+    def available_to(self, user, permission) -> bool:
+        return (
+            self.owner == user
+            or user.is_superuser
+            or user.has_perm(self._get_permission(permission), self)
+        )
+
+    def _get_permission(self, perm):
+        return f"{perm}_{self._meta.model_name}"
+
+    def give_access(self, user, permission):
+        permission = self._get_permission(permission)
+        log.debug("Assigning permission %s", permission)
+        return UserObjectPermission.objects.assign_perm(permission, user, self)
+        # return user.user_permissions.add(permission, self)
+
+
+class Package(PermissionAware):
     """Base model that represents common package information."""
 
     pkg_type = models.CharField(
@@ -70,7 +95,7 @@ class Package(models.Model):
         return self.name + " " + self.version
 
 
-class PackageFile(models.Model):
+class PackageFile(PermissionAware):
     """Package file representation. Bound to the package."""
 
     package = models.ForeignKey(Package, on_delete=models.CASCADE)

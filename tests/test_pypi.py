@@ -10,6 +10,7 @@ from anchor.common.middleware import bind_form
 from anchor.pypi import models, service
 from anchor.pypi.models import Metadata
 from django.core.files.uploadedfile import File
+from guardian.models import UserObjectPermission
 from packaging.utils import canonicalize_version
 
 from . import PackageFactory
@@ -56,17 +57,19 @@ class PyPackageFactory(PackageFactory):
         form = FORM.copy()
         form.update(kwargs)
         filename = self._gen("{name}-{version}.tar.gz".format(**form))
+        form["filename"] = filename.name
         form["sha256_digest"] = sha256sum(filename)
         fd = filename.open("rb")
         self._fds.append(fd)
         form["content"] = File(fd)
         return form
 
-    def new(self, **kwargs):
+    def new(self, user=None, **kwargs):
         """ Create new package. """
+        user = user or self.user
         form = self.new_form(**kwargs)
         file_ = form.pop("content")
-        return service.new_package(bind_form(form, Metadata), file_)
+        return service.new_package(user, bind_form(form, Metadata), file_)
 
 
 ############
@@ -75,8 +78,8 @@ class PyPackageFactory(PackageFactory):
 
 
 @pytest.yield_fixture
-def pypackages(tmp_path):
-    factory = PyPackageFactory(tmp_path)
+def pypackages(tmp_path, user):
+    factory = PyPackageFactory(tmp_path, user)
     try:
         yield factory
     finally:
@@ -89,13 +92,15 @@ def form(pypackages):
 
 
 @pytest.fixture
-def package(pypackages, db):
+def package(pypackages):
     return pypackages.new()
 
 
 @pytest.fixture
-def upload(client, db):
-    def uploader(form, auth=None, **kwargs):
+def upload(pypackages, client, db):
+    def uploader(auth=None, **kwargs):
+        form = pypackages.new_form(**kwargs)
+        kwargs = {}
         if auth:
             kwargs["HTTP_AUTHORIZATION"] = "Basic: {}".format(
                 base64.b64encode(auth.encode()).decode()
@@ -124,14 +129,15 @@ def test_readers(form):
     assert pkg.version == canonicalize_version(anchor.__version__)
 
 
-def test_anonymous_upload(form, upload):
-    assert upload(form) == 401
+def test_anonymous_upload(upload):
+    assert upload() == 401
 
 
-def test_upload(form, upload):
-    response = upload(form, auth="test@localhost:123")
+def test_upload(upload):
+    response = upload(auth="test@localhost:123")
     print(response.content)
     assert response == 200
+    assert upload(auth="test@localhost:123") == 200
 
 
 def test_download(package, client):
@@ -156,7 +162,18 @@ def test_lists(package, client):
     assert package.filename in resp.content.decode()
 
 
-@pytest.mark.skip("TODO")
-def test_upload_permission(form, upload):
-    response = upload(form)
-    assert response != 200
+def test_owner_upload(upload, users):
+    upload(auth="test@localhost:123")
+    upload(auth="test@localhost:123", version="0.2.0")
+    users.new("test2@localhost")
+    response = upload(auth="test2@localhost:123", version="0.3.0")
+    assert response == 403
+
+
+def test_upload_permissions(pypackages, users):
+    usr = users.new("test2@localhost")
+    package = pypackages.new()
+    package.package.give_access(usr, "add")
+    usr.save()
+    pypackages.new(user=usr, version="0.2.0")
+    # assert upload(auth="test2@localhost:123", version="0.2.0") == 200

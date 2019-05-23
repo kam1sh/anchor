@@ -43,7 +43,12 @@ class ExtraMiddleware:
         if "post" in sig.parameters:
             view_kwargs["post"] = bind_form(request.POST, orig_view.annotations["post"])
         log.debug("Processing view %s", orig_view)
-        return view_func(request, *view_args, **view_kwargs)
+        # exceptions from process_view sometimes are not handled (???)
+        # for example, in test_pypi::test_upload_permission
+        try:
+            return view_func(request, *view_args, **view_kwargs)
+        except exceptions.ServiceError as exception:
+            return HttpResponse(str(exception), status=exception.status_code)
 
     def process_exception(self, request, exception):
         if isinstance(exception, exceptions.ServiceError):

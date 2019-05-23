@@ -21,18 +21,24 @@ def client():
     return Client()
 
 
+class UserFactory:
+    def new(self, email, password="123"):
+        return User.objects.create_user(email, email=email, password=password)
+
+
+@pytest.fixture
+def users(db):
+    return UserFactory()
+
+
 @pytest.fixture(autouse=True)
-def user(db):
-    usr = User()
-    usr.email = "test@localhost"
-    usr.set_password("123")
-    usr.save()
-    return usr
+def user(users):
+    return users.new("test@localhost")
 
 
 @pytest.yield_fixture(scope="function")
-def packages(tmp_path):
-    factory = PackageFactory(tmp_path)
+def packages(tmp_path, user):
+    factory = PackageFactory(tmp_path, user)
     try:
         yield factory
     finally:

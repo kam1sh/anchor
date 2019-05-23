@@ -11,13 +11,13 @@ python = "^3.7"
 django = "^2.2"
 django-environ = "^0.4.5"
 django-crispy-forms = "^1.7"
-djangorestframework = "^3.9"
 django-debug-toolbar = "^1.11"
 django-extensions = "^2.1"
 argon2 = {version = "^0.1.10",extras = ["django"]}
 argon2-cffi = "^19.1"
 stdlib-list = "^0.5.0"
 packaging = "^19.0"
+django-guardian = "^1.5"
 
 [tool.poetry.dev-dependencies]
 pylint = "^2.3"

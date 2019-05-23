@@ -1,4 +1,5 @@
 import random
+from pathlib import Path
 
 import pytest
 from anchor.packages.models import Package, PackageFile, PackageTypes
@@ -54,10 +55,11 @@ def to_dataclass(data: dict, cls: type):
 class PackageFactory:
     """ Factory that creates abstract packages. """
 
-    def __init__(self, tmp_path):
+    def __init__(self, tmp_path, user):
         self._tmppath = tmp_path
         self._fds = []
         self._last_pkg = None
+        self.user = user
 
     def new(self, name, version):
         """ Creates and saves new package object. """
@@ -81,7 +83,7 @@ class PackageFactory:
         pkg_file.save()
         return pkg_file
 
-    def _gen(self, name: str, size=5):
+    def _gen(self, name: str, size=5) -> Path:
         """ Generates file. Size accepts kilobytes """
         filename = self._tmppath / name
         with filename.open("w") as fd:

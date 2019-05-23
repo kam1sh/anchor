@@ -7,7 +7,7 @@ from xmlrpc.client import Fault
 from django import http
 from django.db import models
 from django.http import HttpResponseBadRequest as badrequest
-from django.shortcuts import render
+from django.shortcuts import render, get_object_or_404
 from django.views.decorators import csrf
 
 from ..common.exceptions import UserError
@@ -41,7 +41,7 @@ def upload_package(request, post: Metadata):
     raw_file = request.FILES.get("content")
     if not raw_file:
         return badrequest('Provide package within "content" file.')
-    service.new_package(post, raw_file)
+    service.new_package(request.user, post, raw_file)
     return http.HttpResponse("Package uploaded succesfully")
 
 
@@ -59,7 +59,7 @@ def list_files(request, name: str):
 
 
 def download_file(request, filename: str):
-    pkg_file = PackageFile.objects.get(filename=filename)
+    pkg_file = get_object_or_404(PackageFile, filename=filename)
     # pkg = pkg_file.package
     # if not pkg.available_for(current_user):
     #     return http.HttpResponseForbidden()
