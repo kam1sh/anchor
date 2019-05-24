@@ -10,9 +10,9 @@ from django.http import HttpResponseBadRequest as badrequest
 from django.shortcuts import render, get_object_or_404
 from django.views.decorators import csrf
 
-from ..common.exceptions import UserError
+from ..exceptions import UserError
 from ..common.views import basic_auth
-from . import service
+from . import services
 from .models import Metadata, PackageFile, Project
 
 log = logging.getLogger(__name__)
@@ -41,7 +41,7 @@ def upload_package(request, post: Metadata):
     raw_file = request.FILES.get("content")
     if not raw_file:
         return badrequest('Provide package within "content" file.')
-    service.new_package(request.user, post, raw_file)
+    services.upload_file(request.user, post, raw_file)
     return http.HttpResponse("Package uploaded succesfully")
 
 
@@ -60,9 +60,6 @@ def list_files(request, name: str):
 
 def download_file(request, filename: str):
     pkg_file = get_object_or_404(PackageFile, filename=filename)
-    # pkg = pkg_file.package
-    # if not pkg.available_for(current_user):
-    #     return http.HttpResponseForbidden()
     return http.FileResponse(pkg_file.fileobj)
 
 

@@ -12,11 +12,10 @@ import packaging.utils
 import pkg_resources
 import stdlib_list
 from django.conf import settings
-from django.core import files
 from django.db import models
 from django.shortcuts import reverse
 
-from ..common.exceptions import UserError
+from ..exceptions import UserError
 from ..packages import models as base_models
 
 __all__ = ["Metadata", "Project", "PackageFile"]
@@ -51,7 +50,7 @@ class Project(base_models.Package):
 
     def __init__(self, *args):
         super().__init__(*args)
-        self.pkg_type = base_models.PackageTypes.Python
+        self.dist_type = base_models.PackageTypes.Python
 
 
 class ShaReader:
@@ -71,18 +70,9 @@ class ShaReader:
 
 
 class PackageFile(base_models.PackageFile):
-    pkg_type = models.CharField(max_length=16)
+    dist_type = models.CharField(max_length=16)
     sha256 = models.CharField(max_length=64, unique=True)
     _metadata = models.TextField()
-
-    def __init__(self, *args, pkg=None, metadata=None):
-        super().__init__(*args)
-        if metadata:
-            self.metadata = metadata
-        if pkg:
-            if not self._extract_name(pkg):
-                raise TypeError("Filename not provided")
-            self.update(pkg)
 
     @property
     def metadata(self) -> Metadata:
@@ -105,12 +95,12 @@ class PackageFile(base_models.PackageFile):
         if self.filename or self.fileobj.name:
             return Path(settings.MEDIA_ROOT, self.fileobj.name or self.filename)
 
-    def update(self, src: ty.io.BinaryIO, filename=None):
+    def update(self, src: ty.io.BinaryIO, metadata: Metadata, filename=None):
         if self.path and self.path.exists():
             self.path.unlink()
         self._extract_name(src, filename=filename)
         reader = ShaReader(src)
-        super().update(reader, filename=self.filename)
+        super().update(reader, metadata, filename=self.filename)
         self.sha256 = reader.sha256.hexdigest()
         if self.sha256 != self.metadata.sha256_digest:
             raise UserError("Form digest does not match hashsum from the file")

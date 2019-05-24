@@ -2,8 +2,10 @@ import random
 from pathlib import Path
 
 import pytest
+from anchor.common.middleware import bind_form
+from anchor.packages import services
 from anchor.packages.models import Package, PackageFile, PackageTypes
-from anchor.pypi.models import Metadata
+from anchor.packages.models import Metadata
 from django.test import Client as django_client
 
 __all__ = ["Client"]
@@ -61,26 +63,28 @@ class PackageFactory:
         self._last_pkg = None
         self.user = user
 
-    def new(self, name, version):
+    def new_metadata(self, **kwargs):
+        form = dict(name="anchor", version="0.1.0", summary="", description="")
+        form.update(kwargs)
+        return bind_form(form, Metadata)
+
+    def new_package(self, name="anchor"):
         """ Creates and saves new package object. """
         pkg = Package()
         pkg.name = name
-        pkg.version = version
+        # pkg.version = version
         pkg.pkg_type = "python"
+        pkg.owner = self.user
         pkg.update_time()
         pkg.save()
         self._last_pkg = pkg
         return pkg
 
-    def new_file(self, version, size=1, name=None):
-        package = self._last_pkg if not name else Package.objects.get(name=name)
-        pkg_file = PackageFile()
-        pkg_file.version = version
-        pkg_file.package = package
-        fd = open(self._gen(f"{package.name}-{version}.tar.gz", size=size * 1024))
-        self._fds.append(fd)
-        pkg_file.update(fd)
-        pkg_file.save()
+    def new_file(self, user=None, size=1, **kwargs):
+        user = user or self.user
+        metadata = self.new_metadata(**kwargs)
+        filename = self._gen(f"{metadata.name}-{metadata.version}.tar.gz", size=size)
+        pkg_file = services.upload_file(user, metadata, filename.open("rb"))
         return pkg_file
 
     def _gen(self, name: str, size=5) -> Path:

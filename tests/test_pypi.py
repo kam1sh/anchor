@@ -7,10 +7,9 @@ from pathlib import Path
 import anchor
 import pytest
 from anchor.common.middleware import bind_form
-from anchor.pypi import models, service
-from anchor.pypi.models import Metadata
+from anchor.pypi import services
+from anchor.pypi.models import Metadata, PackageFile, Project
 from django.core.files.uploadedfile import File
-from guardian.models import UserObjectPermission
 from packaging.utils import canonicalize_version
 
 from . import PackageFactory
@@ -40,7 +39,7 @@ FORM = {
     "sha256_digest": None,
     "requires_dist": ["flask (>=1.0,<2.0)", "docker (>=3.7,<4.0)"],
     "requires_python": ">=3.6,<4.0",
-    ":action": "file_upload",
+    ":action": "fileupload",
     "protocol_version": "1",
 }
 
@@ -68,8 +67,8 @@ class PyPackageFactory(PackageFactory):
         """ Create new package. """
         user = user or self.user
         form = self.new_form(**kwargs)
-        file_ = form.pop("content")
-        return service.new_package(user, bind_form(form, Metadata), file_)
+        file = form.pop("content")
+        return services.upload_file(user, bind_form(form, Metadata), file)
 
 
 ############
@@ -118,10 +117,11 @@ def upload(pypackages, client, db):
 @pytest.mark.unit
 def test_readers(form):
     """Tests for package reading (wheel and tar.gz)"""
-    file_ = form.pop("content")
+    file = form.pop("content")
     form = bind_form(form, Metadata)
-    pkg = models.PackageFile(pkg=file_, metadata=form)
-    origname = Path(file_.name).name
+    pkg = PackageFile()
+    pkg.update(src=file, metadata=form)
+    origname = Path(file.name).name
     assert pkg.filename == origname
     assert Path(pkg.fileobj.name).name == origname
     # metadata accessing
@@ -137,6 +137,7 @@ def test_upload(upload):
     response = upload(auth="test@localhost:123")
     print(response.content)
     assert response == 200
+    assert PackageFile.objects.all()
     assert upload(auth="test@localhost:123") == 200
 
 
@@ -160,20 +161,3 @@ def test_lists(package, client):
     resp = client.get(f"/py/simple/{name}/")
     assert resp == 200
     assert package.filename in resp.content.decode()
-
-
-def test_owner_upload(upload, users):
-    upload(auth="test@localhost:123")
-    upload(auth="test@localhost:123", version="0.2.0")
-    users.new("test2@localhost")
-    response = upload(auth="test2@localhost:123", version="0.3.0")
-    assert response == 403
-
-
-def test_upload_permissions(pypackages, users):
-    usr = users.new("test2@localhost")
-    package = pypackages.new()
-    package.package.give_access(usr, "add")
-    usr.save()
-    pypackages.new(user=usr, version="0.2.0")
-    # assert upload(auth="test2@localhost:123", version="0.2.0") == 200

@@ -12,7 +12,7 @@ from django.db import models
 from django.utils import timezone
 from guardian.models import UserObjectPermission
 
-from ..common.exceptions import UserError
+from ..exceptions import UserError
 from ..users.models import User
 
 log = logging.getLogger(__name__)
@@ -105,7 +105,16 @@ class PackageFile(PermissionAware):
     version = models.CharField(max_length=64)
     uploaded = models.DateTimeField()
 
-    def update(self, src, filename=None):
+    @property
+    def metadata(self):
+        return None
+
+    @metadata.setter
+    def metadata(self, val):
+        self.version = val.version
+
+    def update(self, src, metadata, filename=None):
+        self.metadata = metadata
         if not isinstance(src, typing.Iterable):
             src = iter(lambda: src.read(2 ** 10), b"")
         self.fileobj = files.File(src)
@@ -179,7 +188,7 @@ class RetentionPolicy(models.Model):
         packages = packages.filter(drop)
         log.debug("Filtered: %s", packages)
         packages = packages.exclude(keep)
-        log.debug("Excluded: %s", packages.query)
+        log.debug("Excluded: %s", packages)
         if check:
             return packages
         packages.delete()
