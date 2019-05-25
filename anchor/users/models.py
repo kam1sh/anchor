@@ -16,7 +16,7 @@ class User(AbstractUser):
     # authorization by email was described in documentation, though I don't like it =/
     USERNAME_FIELD = "email"
     # auth.E002
-    REQUIRED_FIELDS = []
+    REQUIRED_FIELDS = []  # type: ignore
 
     def get_absolute_url(self):
         return reverse("users:detail", kwargs={"username": self.username})

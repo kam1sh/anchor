@@ -36,10 +36,13 @@ def user(users):
     return users.new("test@localhost")
 
 
+@pytest.yield_fixture
+def tempfile(tmp_path):
+    with PackageFactory(tmp_path) as factory:
+        yield factory.gen_file
+
+
 @pytest.yield_fixture(scope="function")
 def packages(tmp_path, user):
-    factory = PackageFactory(tmp_path, user)
-    try:
+    with PackageFactory(tmp_path) as factory:
         yield factory
-    finally:
-        factory.close_all()

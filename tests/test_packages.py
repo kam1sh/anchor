@@ -1,10 +1,18 @@
 import pytest
 
 from anchor import exceptions
-from anchor.packages.models import RetentionPolicy
+from anchor.packages import models
 
 
-def test_new_files(packages):
+@pytest.mark.unit
+def test_reader(tempfile):
+    file = tempfile("file", size_kb=1024).open("rb")
+    reader = models.ChunkedReader(file, max_size_kb=1025)
+    assert reader.max_size == 1025 * 1024
+    reader.run()
+
+
+def test_new_file(packages):
     pkg = packages.new_package()
     file = packages.new_file(version="1.0.0rc2")
     assert pkg.owner == file.owner
@@ -15,7 +23,7 @@ def test_keep(packages):
     pkg = packages.new_package()
     packages.new_file(version="1.0.0rc2")
     packages.new_file(version="1.0.0")
-    retention = RetentionPolicy()
+    retention = models.RetentionPolicy()
     retention.applied_to = pkg
     retention.keep(regexp=r"^\d+\.\d+\.\d+$")
     to_delete = retention.run(check=True)

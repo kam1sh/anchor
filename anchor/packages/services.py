@@ -3,18 +3,29 @@ import logging
 from django.db import transaction
 
 from ..exceptions import Forbidden
-from .models import Package, PackageFile
+from .models import Package, PackageFile, ChunkedReader
 
 
 class Uploader:
     """ Class that handles package file uploads """
 
-    def __init__(self, pkg=Package, pkg_file=PackageFile, name=None):
-        self.pkg = pkg
-        self.pkg_file = pkg_file
-        self.log = logging.getLogger(name or __name__)
+    pkg = Package
+    pkg_file = PackageFile
+    reader = ChunkedReader
 
-    def __call__(self, user, metadata, fd):
+    def __init__(self, name=None):
+        self.log = logging.getLogger(name or __name__)
+        self.user = None
+        self.metadata = None
+        self.fd = None
+
+    def get_reader(self) -> ChunkedReader:
+        return self.reader(self.fd, max_size_kb=2 ** 20)  # 1GB hard limit TODO
+
+    def __call__(self, user, metadata, fd) -> PackageFile:
+        self.user = user
+        self.metadata = metadata
+        self.fd = fd
         try:
             package = self.pkg.objects.get(name=metadata.name)
             if not package.available_to(user, "add"):
@@ -31,7 +42,8 @@ class Uploader:
         except self.pkg_file.DoesNotExist:
             pkg_file = self.pkg_file()
             pkg_file.owner = user
-        pkg_file.update(fd, metadata)
+        reader = self.get_reader()
+        pkg_file.update(reader, metadata)
 
         self.log.debug("Got package %s and package %s", pkg_file, package)
         with transaction.atomic():

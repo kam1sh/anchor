@@ -54,10 +54,24 @@ def to_dataclass(data: dict, cls: type):
     return cls(**data)
 
 
+class _HookedPath:
+    def __init__(self, *args, fd_list):
+        self.path = Path(*args)
+        self._fds = fd_list
+
+    def open(self, mode="r", buffering=-1, encoding=None, errors=None, newline=None):
+        fd = self.path.open(mode, buffering, encoding, errors, newline)
+        self._fds.append(fd)
+        return fd
+
+    def __getattr__(self, name):
+        return getattr(self.path, name)
+
+
 class PackageFactory:
     """ Factory that creates abstract packages. """
 
-    def __init__(self, tmp_path, user):
+    def __init__(self, tmp_path, user=None):
         self._tmppath = tmp_path
         self._fds = []
         self._last_pkg = None
@@ -80,22 +94,29 @@ class PackageFactory:
         self._last_pkg = pkg
         return pkg
 
-    def new_file(self, user=None, size=1, **kwargs):
+    def new_file(self, user=None, size_kb=1, **kwargs):
         user = user or self.user
         metadata = self.new_metadata(**kwargs)
-        filename = self._gen(f"{metadata.name}-{metadata.version}.tar.gz", size=size)
-        pkg_file = services.upload_file(user, metadata, filename.open("rb"))
+        filename = self.gen_file(
+            f"{metadata.name}-{metadata.version}.tar.gz", size_kb=size_kb
+        )
+        file = filename.open("rb")
+        self._fds.append(file)
+        pkg_file = services.upload_file(user, metadata, file)
         return pkg_file
 
-    def _gen(self, name: str, size=5) -> Path:
+    def gen_file(self, name: str, size_kb=5) -> Path:
         """ Generates file. Size accepts kilobytes """
-        filename = self._tmppath / name
+        filename = _HookedPath(self._tmppath, name, fd_list=self._fds)
         with filename.open("w") as fd:
-            for _ in range(size):
+            for _ in range(size_kb):
                 fd.write(str(random.randint(1, 9)) * 1024)
         return filename
 
-    def close_all(self):
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, value, tb):
         for fd in self._fds:
             fd.close()
         self._fds.clear()

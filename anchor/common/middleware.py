@@ -69,7 +69,7 @@ class FunctionInfo:
     def __init__(self, function):
         self.function = function
         parent = function
-        self.decorators = []
+        self.decorators = []  # type: ignore
         # range(x) instead of `while True:` to avoid infinite loops
         for _ in range(128):
             # functools.wraps puts __wrapped__ attribute at the function
@@ -131,7 +131,7 @@ def getval(data, key):
 def convert_arg(arg: ty.List[str], val_type: type):
     # check in case of tests that passes usual dicts
     if not isinstance(arg, list):
-        arg = [arg]
+        arg = [arg]  # type: ignore
     if val_type in {str, "str"}:
         return arg[0]
     if val_type in [ty.Iterable]:

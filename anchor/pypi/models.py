@@ -15,7 +15,7 @@ from django.conf import settings
 from django.db import models
 from django.shortcuts import reverse
 
-from ..exceptions import UserError
+from ..exceptions import UserError, ServiceError
 from ..packages import models as base_models
 
 __all__ = ["Metadata", "Project", "PackageFile"]
@@ -24,9 +24,6 @@ log = logging.getLogger(__name__)
 prohibited_packages = set(stdlib_list.stdlib_list("3.7"))
 # TODO maybe also allow zip and egg?
 allowed_files = re.compile(r".+\.(tar\.gz|whl)$", re.I)
-
-
-EMPTY_SHA256 = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
 
 
 @dataclasses.dataclass
@@ -53,17 +50,23 @@ class Project(base_models.Package):
         self.dist_type = base_models.PackageTypes.Python
 
 
-class ShaReader:
+class ShaReader(base_models.ChunkedReader):
     """ Wrapper around binary reader with sha256 computing. """
 
-    def __init__(self, src):
-        self.src = src
+    def __init__(self, src, max_size_kb, assert_hash=None):
+        super().__init__(src, max_size_kb)
+        self.hash = assert_hash
         self.sha256 = hashlib.sha256()
 
     def __iter__(self):
-        for chunk in iter(lambda: self.src.read(2 ** 10), b""):
+        for chunk in super().__iter__():
             self.sha256.update(chunk)
             yield chunk
+        self.sha256 = self.sha256.hexdigest()
+        if self.sha256 != self.hash:
+            raise UserError(
+                f"Form checksum does not match checksum from the file {self.sha256}"
+            )
 
     def __getattr__(self, name):
         return getattr(self.src, name)
@@ -82,8 +85,7 @@ class PackageFile(base_models.PackageFile):
 
     @metadata.setter
     def metadata(self, val: Metadata):
-        self.pkg_type = val.filetype
-        self.version = val.version
+        self.dist_type = val.filetype
         self._metadata = json.dumps(val.__dict__)
 
     @property
@@ -91,19 +93,18 @@ class PackageFile(base_models.PackageFile):
         return reverse("pypi.download", kwargs={"filename": self.name})
 
     @property
-    def path(self) -> Path:
+    def path(self) -> ty.Optional[Path]:
         if self.filename or self.fileobj.name:
             return Path(settings.MEDIA_ROOT, self.fileobj.name or self.filename)
+        return None  # mypy wants that
 
-    def update(self, src: ty.io.BinaryIO, metadata: Metadata, filename=None):
+    def update(self, src, metadata):
+        super().update(src, metadata)
+        self.metadata = metadata
         if self.path and self.path.exists():
             self.path.unlink()
-        self._extract_name(src, filename=filename)
-        reader = ShaReader(src)
-        super().update(reader, metadata, filename=self.filename)
-        self.sha256 = reader.sha256.hexdigest()
-        if self.sha256 != self.metadata.sha256_digest:
-            raise UserError("Form digest does not match hashsum from the file")
+        self._extract_name(src)
+        self.sha256 = src.sha256
         log.debug("%s sha256: %s", self.filename, self.sha256)
 
     def _extract_name(self, pkg, filename=None):

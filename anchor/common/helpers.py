@@ -6,7 +6,7 @@ from django.db.models.query import QuerySet
 from django.http import HttpResponse
 
 
-class JsonResponse5(HttpResponse):
+class JsonResponse(HttpResponse):
     def __init__(self, data, **kwargs):
         content_type = "application/json"
         super().__init__(json.dumps(data), content_type=content_type, **kwargs)
@@ -16,7 +16,7 @@ serializable = (dict, list, tuple, str, int, float, bool, type(None))
 
 
 @functools.singledispatch
-def jsonify(data=None, **kwargs) -> JsonResponse5:
+def jsonify(data=None, **kwargs) -> JsonResponse:
     """
     Serializes any data (dict, django model, Paginator, QuerySet etc)
     to HttpResponse.
@@ -24,21 +24,21 @@ def jsonify(data=None, **kwargs) -> JsonResponse5:
     data = data or kwargs
     if not isinstance(data, dict):
         data = dict(items=data)
-    return JsonResponse5(data)
+    return JsonResponse(data)
 
 
 @jsonify.register(models.Model)
 def _(data: models.Model = None, **kwargs):
     fields = _process_kwargs(data._meta, kwargs)
-    return JsonResponse5(_model_to_dict(data, fields))
+    return JsonResponse(_model_to_dict(data, fields))
 
 
-@jsonify.register(QuerySet)
+@jsonify.register(QuerySet)  # type: ignore
 def _(data: QuerySet = None, **kwargs):
     fields = _process_kwargs(data.model._meta, kwargs)
     # TODO use .values()?
     items = [_model_to_dict(x, fields) for x in data]
-    return JsonResponse5(dict(items=items))
+    return JsonResponse(dict(items=items))
 
 
 def _model_to_dict(mdl, fields):

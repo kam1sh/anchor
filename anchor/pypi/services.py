@@ -1,4 +1,16 @@
 from ..packages import services
-from .models import PackageFile, Project
+from .models import PackageFile, Project, ShaReader
 
-upload_file = services.Uploader(Project, PackageFile, __name__)
+
+class PyUploader(services.Uploader):
+    pkg = Project
+    pkg_file = PackageFile
+    reader = ShaReader
+
+    def get_reader(self):
+        reader = super().get_reader()
+        reader.hash = self.metadata.sha256_digest
+        return reader
+
+
+upload_file = PyUploader(__name__)

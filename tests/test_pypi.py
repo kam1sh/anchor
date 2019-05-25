@@ -7,7 +7,7 @@ from pathlib import Path
 import anchor
 import pytest
 from anchor.common.middleware import bind_form
-from anchor.pypi import services
+from anchor.pypi import services, models
 from anchor.pypi.models import Metadata, PackageFile, Project
 from django.core.files.uploadedfile import File
 from packaging.utils import canonicalize_version
@@ -55,11 +55,10 @@ class PyPackageFactory(PackageFactory):
         """ Creates new form with a file """
         form = FORM.copy()
         form.update(kwargs)
-        filename = self._gen("{name}-{version}.tar.gz".format(**form))
+        filename = self.gen_file("{name}-{version}.tar.gz".format(**form))
         form["filename"] = filename.name
         form["sha256_digest"] = sha256sum(filename)
         fd = filename.open("rb")
-        self._fds.append(fd)
         form["content"] = File(fd)
         return form
 
@@ -78,11 +77,8 @@ class PyPackageFactory(PackageFactory):
 
 @pytest.yield_fixture
 def pypackages(tmp_path, user):
-    factory = PyPackageFactory(tmp_path, user)
-    try:
+    with PyPackageFactory(tmp_path, user) as factory:
         yield factory
-    finally:
-        factory.close_all()
 
 
 @pytest.fixture
@@ -118,15 +114,16 @@ def upload(pypackages, client, db):
 def test_readers(form):
     """Tests for package reading (wheel and tar.gz)"""
     file = form.pop("content")
+    file = models.ShaReader(file, 5120, assert_hash=form["sha256_digest"])
     form = bind_form(form, Metadata)
-    pkg = PackageFile()
-    pkg.update(src=file, metadata=form)
+    pkg_file = PackageFile()
+    pkg_file.update(src=file, metadata=form)
     origname = Path(file.name).name
-    assert pkg.filename == origname
-    assert Path(pkg.fileobj.name).name == origname
+    assert pkg_file.filename == origname
+    assert Path(pkg_file.fileobj.name).name == origname
     # metadata accessing
-    assert pkg.name == "anchor"
-    assert pkg.version == canonicalize_version(anchor.__version__)
+    assert pkg_file.name == "anchor"
+    assert pkg_file.version == canonicalize_version(anchor.__version__)
 
 
 def test_anonymous_upload(upload):

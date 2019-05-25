@@ -3,7 +3,7 @@ import enum
 import functools
 import json
 import logging
-import typing
+import typing as ty
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -95,8 +95,45 @@ class Package(PermissionAware):
         return self.name + " " + self.version
 
 
+# TODO inherit django.core.files.File?
+class ChunkedReader:
+    """ File wrapper that supports chunk iterating. """
+
+    def __init__(self, src: ty.BinaryIO, max_size_kb):
+        self.name = src.name
+        self.src = src
+        self.size = -1
+        self.max_size = max_size_kb * 1024
+
+    def run(self):
+        for _ in self:
+            pass
+
+    def __iter__(self):
+        yield from self.chunks()
+
+    def chunks(self, chunk_size=2 ** 20):
+        size = 0
+        while True:
+            chunk = self.src.read(chunk_size)
+            if not chunk:
+                break
+            size += len(chunk)
+            if size > self.max_size:
+                log.debug("Calculated size: %s", size)
+                raise UserError(f"File size exceeds available ({self.max_size} bytes)")
+            yield chunk
+        if not size:
+            raise UserError("Empty file")
+        self.size = size
+
+    @property
+    def file(self):
+        return files.File(self.src)
+
+
 class PackageFile(PermissionAware):
-    """Package file representation. Bound to the package."""
+    """Package file representation. Bounded to the package."""
 
     package = models.ForeignKey(Package, on_delete=models.CASCADE)
     filename = models.CharField(max_length=64, unique=True)
@@ -105,27 +142,13 @@ class PackageFile(PermissionAware):
     version = models.CharField(max_length=64)
     uploaded = models.DateTimeField()
 
-    @property
-    def metadata(self):
-        return None
-
-    @metadata.setter
-    def metadata(self, val):
-        self.version = val.version
-
-    def update(self, src, metadata, filename=None):
-        self.metadata = metadata
-        if not isinstance(src, typing.Iterable):
-            src = iter(lambda: src.read(2 ** 10), b"")
-        self.fileobj = files.File(src)
-        self.filename = filename or Path(src.name).name
-        size = 0
-        for chunk in src:
-            size += len(chunk)
-        if not size:
-            raise UserError("Empty file")
-        self.size = size
+    def update(self, src: ChunkedReader, metadata):
+        self.fileobj = src.file
+        src.run()
+        self.filename = Path(src.name).name
+        self.size = src.size
         self.uploaded = timezone.now()
+        self.version = metadata.version
 
     def __str__(self):
         return self.filename

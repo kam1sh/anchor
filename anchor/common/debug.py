@@ -4,7 +4,7 @@ import pprint
 log = logging.getLogger(__name__)
 
 
-class Logger(logging.getLoggerClass()):
+class Logger(logging.getLoggerClass()):  # type: ignore
     """
     Basic logger with a few improvments in formatting and django integration.
     """
@@ -18,11 +18,12 @@ class Logger(logging.getLoggerClass()):
 
         logger.debug("Houston, we have a %s", "thorny problem", exc_info=1)
         """
-        args = list(args)
-        for i, item in enumerate(args):
-            if isinstance(item, dict, list):
-                args[i] = pprint.pformat(item)
-        return super().debug(msg, *args, **kwargs)
+        list_args = []
+        for item in args:
+            if isinstance(item, (dict, list)):
+                item = pprint.pformat(item)
+            list_args.append(item)
+        return super().debug(msg, *list_args, **kwargs)
 
     def dump_headers(self, request):
         """Logs all request headers with DEBUG level."""
