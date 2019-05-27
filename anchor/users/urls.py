@@ -1,11 +1,10 @@
-from django.urls import path
-
 from anchor.users.views import (
+    user_detail_view,
     user_list_view,
     user_redirect_view,
     user_update_view,
-    user_detail_view,
 )
+from django.urls import path
 
 app_name = "users"
 urlpatterns = [

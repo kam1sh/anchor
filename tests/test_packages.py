@@ -1,5 +1,4 @@
 import pytest
-
 from anchor import exceptions
 from anchor.packages import models
 

@@ -7,11 +7,11 @@ from xmlrpc.client import Fault
 from django import http
 from django.db import models
 from django.http import HttpResponseBadRequest as badrequest
-from django.shortcuts import render, get_object_or_404
+from django.shortcuts import get_object_or_404, render
 from django.views.decorators import csrf
 
-from ..exceptions import UserError
 from ..common.views import basic_auth
+from ..exceptions import UserError
 from . import services
 from .models import Metadata, PackageFile, Project
 

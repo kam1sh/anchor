@@ -1,10 +1,10 @@
-import typing as ty
 import logging
+import typing as ty
 
 from django.db import transaction
 
 from ..exceptions import Forbidden
-from .models import Package, PackageFile, ChunkedReader
+from .models import ChunkedReader, Package, PackageFile
 
 
 class Uploader:

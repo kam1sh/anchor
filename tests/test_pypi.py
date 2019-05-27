@@ -7,9 +7,10 @@ from pathlib import Path
 import anchor
 import pytest
 from anchor.common.middleware import bind_form
-from anchor.pypi import services, models
+from anchor.pypi import models, services
 from anchor.pypi.models import Metadata, PackageFile, Project
 from django.core.files.uploadedfile import File
+from django.test import TestCase
 from packaging.utils import canonicalize_version
 
 from . import PackageFactory
@@ -147,14 +148,14 @@ def test_search(package, client):
     data = xmlrpc.client.dumps((dict(name=[name]), "and"), "search")
     response = client.post("/py/", data=data, content_type="text/xml")
     assert response == 200
-    assert name in response.content.decode()
+    assert name in response
 
 
 def test_lists(package, client):
     name = package.name
     resp = client.get("/py/simple/")
     assert resp == 200
-    assert name in resp.content.decode()
+    assert name in resp
     resp = client.get(f"/py/simple/{name}/")
     assert resp == 200
-    assert package.filename in resp.content.decode()
+    assert package.filename in resp

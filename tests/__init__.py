@@ -1,13 +1,14 @@
-import typing as ty
 import random
+import typing as ty
+import unittest
 from pathlib import Path
 
 import pytest
 from anchor.common.middleware import bind_form
 from anchor.packages import services
-from anchor.packages.models import Package, PackageFile, PackageTypes
-from anchor.packages.models import Metadata
+from anchor.packages.models import Metadata, Package, PackageFile, PackageTypes
 from django.test import Client as django_client
+from django.test import TestCase as django_testcase
 
 __all__ = ["Client"]
 
@@ -23,9 +24,7 @@ class Client(django_client):
 
 
 class Response:
-    """
-    Wrapper around HttpResponse with a few extra methods.
-    """
+    """ Wrapper around HttpResponse with a few extra methods. """
 
     def __init__(self, response):
         self.orig = response
@@ -41,6 +40,13 @@ class Response:
         if isinstance(other, int):
             return self.status_code == other
         return self.orig == other
+
+    def __contains__(self, value):
+        """
+        Response body checking:
+        >>> assert "<HTML>" in resp
+        """
+        return value in self.orig.content.decode()
 
     def __repr__(self):
         return "{}({})".format(self.__class__.__name__, self.status_code)

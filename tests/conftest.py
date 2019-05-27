@@ -31,9 +31,13 @@ def users(db):
     return UserFactory()
 
 
-@pytest.fixture(autouse=True)
+@pytest.fixture
 def user(users):
-    return users.new("test@localhost")
+    usr = users.new("test@localhost")
+    try:
+        yield usr
+    finally:
+        usr.delete()
 
 
 @pytest.yield_fixture

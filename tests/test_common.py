@@ -1,18 +1,19 @@
 import json
 from dataclasses import dataclass
 
-from anchor.common import middleware, debug
+from anchor.common import debug, middleware
 from django.http.request import QueryDict
 from django.test import RequestFactory as Requests
 from pytest import mark
 
 
 @mark.unit
-def test_logger():
+def test_logger(caplog):
     logger = debug.Logger("test_logger")
     logger.debug([1, 2, 3])
     req = Requests().get("/test")
     logger.dump_headers(req)
+    # caplog.text / records
 
 
 @mark.unit

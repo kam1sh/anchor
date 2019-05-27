@@ -15,7 +15,7 @@ from django.conf import settings
 from django.db import models
 from django.shortcuts import reverse
 
-from ..exceptions import UserError, ServiceError
+from ..exceptions import ServiceError, UserError
 from ..packages import models as base_models
 
 __all__ = ["Metadata", "Project", "PackageFile"]
