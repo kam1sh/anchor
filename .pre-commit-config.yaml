@@ -1,7 +1,26 @@
+default_language_version:
+  python: python3.7
 repos:
--   repo: https://github.com/ambv/black
-    rev: stable
-    hooks:
-    - id: black
-      language_version: python3.6
+- repo: git://github.com/pre-commit/pre-commit-hooks
+  sha: v0.9.1
+  hooks:
+  - id: check-added-large-files
+    args:
+    - --maxkb=128
+  - id: check-ast
+  - id: check-case-conflict
+  #- id: check-docstring-first
+- repo: https://github.com/ambv/black
+  rev: stable
+  hooks:
+  - id: black
+    name: Check code style
+    language: python
+- repo: local
+  hooks:
+  - id: mypy
+    name: Check types
+    entry: mypy anchor tests
+    language: python
+    pass_filenames: false
 

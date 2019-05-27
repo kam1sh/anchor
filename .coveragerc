@@ -1,5 +1,8 @@
 [run]
-include = ciconia/*
+include = anchor/*
 omit = *migrations*, *tests*
-plugins =
-    django_coverage_plugin
+# django coverage supports templates coverage,
+# but it does not work right now (?)
+#plugins =
+#    django_coverage_plugin
+

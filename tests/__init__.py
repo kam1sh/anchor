@@ -1,3 +1,4 @@
+import typing as ty
 import random
 from pathlib import Path
 
@@ -73,7 +74,7 @@ class PackageFactory:
 
     def __init__(self, tmp_path, user=None):
         self._tmppath = tmp_path
-        self._fds = []
+        self._fds: ty.List[ty.BinaryIO] = []
         self._last_pkg = None
         self.user = user
 
@@ -105,7 +106,7 @@ class PackageFactory:
         pkg_file = services.upload_file(user, metadata, file)
         return pkg_file
 
-    def gen_file(self, name: str, size_kb=5) -> Path:
+    def gen_file(self, name: str, size_kb=5) -> _HookedPath:
         """ Generates file. Size accepts kilobytes """
         filename = _HookedPath(self._tmppath, name, fd_list=self._fds)
         with filename.open("w") as fd:

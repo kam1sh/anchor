@@ -3,7 +3,9 @@ from .models import PackageFile, Project, ShaReader
 
 
 class PyUploader(services.Uploader):
-    pkg = Project
+    # mypy doesn't understand that Type[Project] is inherited from Type[Package] =/
+    # for such situations generics are useful, but they're too hard
+    pkg = Project  # type: ignore
     pkg_file = PackageFile
     reader = ShaReader
 

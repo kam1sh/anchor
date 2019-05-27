@@ -27,9 +27,7 @@ class Logger(logging.getLoggerClass()):  # type: ignore
 
     def dump_headers(self, request):
         """Logs all request headers with DEBUG level."""
-        headers = {
-            {k: x for k, x in request.META.items() if str(k).startswith("HTTP_")}
-        }
+        headers = {k: x for k, x in request.META.items() if str(k).startswith("HTTP_")}
         self.debug("%s", headers)
 
 

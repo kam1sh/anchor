@@ -1,3 +1,4 @@
+import typing as ty
 import logging
 
 from django.db import transaction
@@ -13,16 +14,16 @@ class Uploader:
     pkg_file = PackageFile
     reader = ChunkedReader
 
-    def __init__(self, name=None):
+    def __init__(self, name: str = None):
         self.log = logging.getLogger(name or __name__)
         self.user = None
         self.metadata = None
-        self.fd = None
+        self.fd: ty.BinaryIO
 
-    def get_reader(self) -> ChunkedReader:
+    def get_reader(self):
         return self.reader(self.fd, max_size_kb=2 ** 20)  # 1GB hard limit TODO
 
-    def __call__(self, user, metadata, fd) -> PackageFile:
+    def __call__(self, user, metadata, fd):
         self.user = user
         self.metadata = metadata
         self.fd = fd

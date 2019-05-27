@@ -1,11 +1,21 @@
 import json
 from dataclasses import dataclass
 
-from anchor.common import middleware
+from anchor.common import middleware, debug
 from django.http.request import QueryDict
 from django.test import RequestFactory as Requests
+from pytest import mark
 
 
+@mark.unit
+def test_logger():
+    logger = debug.Logger("test_logger")
+    logger.debug([1, 2, 3])
+    req = Requests().get("/test")
+    logger.dump_headers(req)
+
+
+@mark.unit
 def test_serialize_response():
     def view(request):
         return {"items": []}
@@ -17,6 +27,7 @@ def test_serialize_response():
     assert json.loads(response)
 
 
+@mark.unit
 def test_process_dataclass():
     @dataclass
     class DataClass:
