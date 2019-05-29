@@ -2,13 +2,18 @@ default_language_version:
   python: python3.7
 repos:
 - repo: git://github.com/pre-commit/pre-commit-hooks
-  sha: v0.9.1
+  sha: v2.2.3
   hooks:
   - id: check-added-large-files
     args:
     - --maxkb=128
   - id: check-ast
   - id: check-case-conflict
+  - id: debug-statements
+  - id: mixed-line-ending
+    args:
+    - --fix=lf
+  - id: detect-private-key
   #- id: check-docstring-first
 - repo: https://github.com/ambv/black
   rev: stable

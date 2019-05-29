@@ -4,10 +4,10 @@ import functools
 import json
 import logging
 import typing as ty
-from datetime import datetime, timedelta
+from datetime import timedelta
 from pathlib import Path
 
-from django.core import files
+from django.conf import settings
 from django.db import models
 from django.utils import timezone
 from guardian.models import UserObjectPermission
@@ -42,6 +42,7 @@ class PermissionAware(models.Model):
         abstract = True
 
     def available_to(self, user, permission) -> bool:
+        log.debug("owner: %r, user: %r", self.owner, user)
         return (
             self.owner == user
             or user.is_superuser
@@ -102,7 +103,7 @@ class ChunkedReader:
     def __init__(self, src: ty.BinaryIO, max_size_kb):
         self.name = src.name
         self.src = src
-        self.size = -1
+        self.size = 0
         self.max_size = max_size_kb * 1024
 
     def run(self):
@@ -110,26 +111,18 @@ class ChunkedReader:
             pass
 
     def __iter__(self):
-        yield from self.chunks()
+        yield from iter(lambda: self.read(2048), b"")
 
-    def chunks(self, chunk_size=2 ** 20):
-        size = 0
-        while True:
-            chunk = self.src.read(chunk_size)
-            if not chunk:
-                break
-            size += len(chunk)
-            if size > self.max_size:
-                log.debug("Calculated size: %s", size)
-                raise UserError(f"File size exceeds available ({self.max_size} bytes)")
-            yield chunk
-        if not size:
+    def read(self, size=None):
+        chunk = self.src.read(size)
+        self.size += len(chunk)
+        if self.size > self.max_size:
+            log.debug("Calculated size: %s", self.size)
+            raise UserError(f"File size exceeds available ({self.max_size} bytes)")
+        # end of file and size is still zero
+        if not chunk and not self.size:
             raise UserError("Empty file")
-        self.size = size
-
-    @property
-    def file(self):
-        return files.File(self.src)
+        return chunk
 
 
 class PackageFile(PermissionAware):
@@ -143,12 +136,19 @@ class PackageFile(PermissionAware):
     uploaded = models.DateTimeField()
 
     def update(self, src: ChunkedReader, metadata):
-        self.fileobj = src.file
-        src.run()
+        self.fileobj.save(src.name, src, save=False)
+        log.debug("Saved file to %s", self.path)
+        # src.run() # TODO
         self.filename = Path(src.name).name
         self.size = src.size
         self.uploaded = timezone.now()
         self.version = metadata.version
+
+    @property
+    def path(self) -> ty.Optional[Path]:
+        if self.filename or self.fileobj.name:
+            return Path(settings.MEDIA_ROOT, self.fileobj.name or self.filename)
+        return None  # mypy wants that
 
     def __str__(self):
         return self.filename

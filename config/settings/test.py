@@ -56,3 +56,5 @@ EMAIL_HOST = "localhost"
 EMAIL_PORT = 1025
 
 LOGGING["loggers"]["anchor"]["level"] = "DEBUG"
+LOGGING["loggers"]["anchor.common.middleware"] = {"level": "FATAL"}
+LOGGING["loggers"]["django.request"] = {"level": "FATAL"}

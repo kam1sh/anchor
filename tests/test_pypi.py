@@ -1,5 +1,4 @@
 import base64
-import random
 import subprocess
 import xmlrpc.client
 from pathlib import Path
@@ -7,13 +6,13 @@ from pathlib import Path
 import anchor
 import pytest
 from anchor.common.middleware import bind_form
+import io
 from anchor.pypi import models, services
 from anchor.pypi.models import Metadata, PackageFile, Project
-from django.core.files.uploadedfile import File
-from django.test import TestCase
 from packaging.utils import canonicalize_version
 
-from . import PackageFactory
+from . import PackageFactory, TestCase
+from .conftest import UserFactory
 
 FORM = {
     "name": "anchor",
@@ -52,15 +51,15 @@ def sha256sum(pth: Path):
 
 
 class PyPackageFactory(PackageFactory):
-    def new_form(self, **kwargs):
+    def new_form(self, **kwargs) -> dict:
         """ Creates new form with a file """
         form = FORM.copy()
         form.update(kwargs)
-        filename = self.gen_file("{name}-{version}.tar.gz".format(**form))
-        form["filename"] = filename.name
-        form["sha256_digest"] = sha256sum(filename)
-        fd = filename.open("rb")
-        form["content"] = File(fd)
+        file = self.gen_file("{name}-{version}.tar.gz".format(**form))
+        form["filename"] = file.name
+        form["sha256_digest"] = sha256sum(file)
+        fd = file.open("rb")
+        form["content"] = fd  # File(fd, name=file.name)
         return form
 
     def new(self, user=None, **kwargs):
@@ -116,9 +115,9 @@ def test_readers(form):
     """Tests for package reading (wheel and tar.gz)"""
     file = form.pop("content")
     file = models.ShaReader(file, 5120, assert_hash=form["sha256_digest"])
-    form = bind_form(form, Metadata)
+    metadata = bind_form(form, Metadata)
     pkg_file = PackageFile()
-    pkg_file.update(src=file, metadata=form)
+    pkg_file.update(src=file, metadata=metadata)
     origname = Path(file.name).name
     assert pkg_file.filename == origname
     assert Path(pkg_file.fileobj.name).name == origname
@@ -136,6 +135,7 @@ def test_upload(upload):
     print(response.content)
     assert response == 200
     assert PackageFile.objects.all()
+    assert PackageFile.objects.get().path.exists(), "File does not exists!"
     assert upload(auth="test@localhost:123") == 200
 
 

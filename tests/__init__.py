@@ -1,12 +1,13 @@
 import random
 import typing as ty
-import unittest
 from pathlib import Path
 
 import pytest
 from anchor.common.middleware import bind_form
 from anchor.packages import services
 from anchor.packages.models import Metadata, Package, PackageFile, PackageTypes
+from django.conf import settings
+from django.core.files import File
 from django.test import Client as django_client
 from django.test import TestCase as django_testcase
 
@@ -14,13 +15,17 @@ __all__ = ["Client"]
 
 
 class Client(django_client):
-    """
-    Wrapper around django test client with a few extensions.
-    """
+    """ Wrapper around django test client with a few extensions. """
 
     def request(self, **request):
         response = super().request(**request)
         return Response(response)
+
+
+class TestCase(django_testcase):
+    client_class = Client
+    get = property(lambda self: self.client.get)
+    post = property(lambda self: self.client.post)
 
 
 class Response:
@@ -61,7 +66,11 @@ def to_dataclass(data: dict, cls: type):
     return cls(**data)
 
 
-class _HookedPath:
+# subclassing pathlib.Path is kinda hard.
+# maybe it's better to subclass PosixPath?
+class _HookedPath(type(Path())):  # type: ignore
+    """ Wrapper around pathlib.Path that appends file object to the list """
+
     def __init__(self, *args, fd_list):
         self.path = Path(*args)
         self._fds = fd_list
@@ -69,7 +78,7 @@ class _HookedPath:
     def open(self, mode="r", buffering=-1, encoding=None, errors=None, newline=None):
         fd = self.path.open(mode, buffering, encoding, errors, newline)
         self._fds.append(fd)
-        return fd
+        return File(fd, name=self.name)
 
     def __getattr__(self, name):
         return getattr(self.path, name)
@@ -80,6 +89,7 @@ class PackageFactory:
 
     def __init__(self, tmp_path, user=None):
         self._tmppath = tmp_path
+        # list of files to close
         self._fds: ty.List[ty.BinaryIO] = []
         self._last_pkg = None
         self.user = user
@@ -104,10 +114,10 @@ class PackageFactory:
     def new_file(self, user=None, size_kb=1, **kwargs):
         user = user or self.user
         metadata = self.new_metadata(**kwargs)
-        filename = self.gen_file(
+        file = self.gen_file(
             f"{metadata.name}-{metadata.version}.tar.gz", size_kb=size_kb
         )
-        file = filename.open("rb")
+        file = file.open("rb")
         self._fds.append(file)
         pkg_file = services.upload_file(user, metadata, file)
         return pkg_file

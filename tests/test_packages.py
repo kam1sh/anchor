@@ -5,6 +5,10 @@ from anchor.packages import models
 
 @pytest.mark.unit
 def test_reader(tempfile):
+    """
+    Checks that ChunkedReader max file size
+    is working properly.
+    """
     file = tempfile("file", size_kb=1024).open("rb")
     reader = models.ChunkedReader(file, max_size_kb=1025)
     assert reader.max_size == 1025 * 1024

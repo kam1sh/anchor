@@ -16,7 +16,6 @@ class Uploader:
 
     def __init__(self, name: str = None):
         self.log = logging.getLogger(name or __name__)
-        self.user = None
         self.metadata = None
         self.fd: ty.BinaryIO
 
@@ -24,7 +23,6 @@ class Uploader:
         return self.reader(self.fd, max_size_kb=2 ** 20)  # 1GB hard limit TODO
 
     def __call__(self, user, metadata, fd):
-        self.user = user
         self.metadata = metadata
         self.fd = fd
         try:
@@ -43,10 +41,11 @@ class Uploader:
         except self.pkg_file.DoesNotExist:
             pkg_file = self.pkg_file()
             pkg_file.owner = user
+
         reader = self.get_reader()
         pkg_file.update(reader, metadata)
-
         self.log.debug("Got package %s and package %s", pkg_file, package)
+
         with transaction.atomic():
             package.save()
             pkg_file.package = package

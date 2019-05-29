@@ -12,8 +12,10 @@ def pytest_configure():
 
 
 @pytest.fixture(autouse=True)
-def media_storage(settings, tmpdir):
-    settings.MEDIA_ROOT = tmpdir.strpath
+def media_storage(settings, tmp_path):
+    media = tmp_path / "media"
+    media.mkdir()
+    settings.MEDIA_ROOT = media.absolute()
 
 
 @pytest.fixture
@@ -46,7 +48,7 @@ def tempfile(tmp_path):
         yield factory.gen_file
 
 
-@pytest.yield_fixture(scope="function")
+@pytest.yield_fixture
 def packages(tmp_path, user):
-    with PackageFactory(tmp_path) as factory:
+    with PackageFactory(tmp_path, user) as factory:
         yield factory

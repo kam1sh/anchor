@@ -11,7 +11,6 @@ from pathlib import Path
 import packaging.utils
 import pkg_resources
 import stdlib_list
-from django.conf import settings
 from django.db import models
 from django.shortcuts import reverse
 
@@ -47,7 +46,7 @@ class Project(base_models.Package):
 
     def __init__(self, *args):
         super().__init__(*args)
-        self.dist_type = base_models.PackageTypes.Python
+        self.pkg_type = base_models.PackageTypes.Python.value
 
 
 class ShaReader(base_models.ChunkedReader):
@@ -92,17 +91,9 @@ class PackageFile(base_models.PackageFile):
     def link(self):
         return reverse("pypi.download", kwargs={"filename": self.name})
 
-    @property
-    def path(self) -> ty.Optional[Path]:
-        if self.filename or self.fileobj.name:
-            return Path(settings.MEDIA_ROOT, self.fileobj.name or self.filename)
-        return None  # mypy wants that
-
     def update(self, src, metadata):
         super().update(src, metadata)
         self.metadata = metadata
-        if self.path and self.path.exists():
-            self.path.unlink()
         self._extract_name(src)
         self.sha256 = src.sha256
         log.debug("%s sha256: %s", self.filename, self.sha256)
