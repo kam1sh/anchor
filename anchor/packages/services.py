@@ -44,6 +44,7 @@ class Uploader:
 
         reader = self.get_reader()
         pkg_file.update(reader, metadata)
+
         self.log.debug("Got package %s and package %s", pkg_file, package)
 
         with transaction.atomic():

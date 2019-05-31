@@ -16,7 +16,7 @@ log = logging.getLogger(__name__)
 
 
 @functools.lru_cache()
-def cached_signature(cls):
+def cached_signature(cls) -> inspect.Signature:
     # https://docs.python.org/3/library/inspect.html#inspect.Signature
     return inspect.signature(cls)
 
@@ -32,28 +32,29 @@ class ExtraMiddleware:
 
     def __call__(self, request) -> HttpResponse:
         response = self._function(request)
-        # checking for HttpResponseBase instead of HttpResponse
-        # because FileResponse is derived from HttpResponseBase =/
+        return self._wrap_json(response)
+
+    def process_view(self, request, view_func, view_args, view_kwargs) -> HttpResponse:
+        binder = RequestBinder(request, existing_kwargs=view_kwargs)
+        try:
+            kwargs = binder.bind_view(view_func)
+            view_kwargs.update(kwargs)
+            response = view_func(request, *view_args, **view_kwargs)
+            return self._wrap_json(response)
+        # exceptions from process_view are not handled by process_exception (???)
+        except exceptions.ServiceError as exception:
+            return exception.to_response()
+
+    def _wrap_json(self, response) -> HttpResponse:
         if not isinstance(response, HttpResponseBase):
             response = helpers.jsonify(response)
+        # checking for HttpResponseBase instead of HttpResponse
+        # because FileResponse is derived from HttpResponseBase =/
         return response
-
-    def process_view(self, request, view_func, view_args, view_kwargs):
-        orig_view = FunctionInfo.from_cache(view_func)
-        sig = orig_view.signature
-        if "post" in sig.parameters:
-            view_kwargs["post"] = bind_form(request.POST, orig_view.annotations["post"])
-        log.debug("Processing view %s", orig_view)
-        # exceptions from process_view sometimes are not handled (???)
-        # for example, in test_pypi::test_upload_permission
-        try:
-            return view_func(request, *view_args, **view_kwargs)
-        except exceptions.ServiceError as exception:
-            return HttpResponse(str(exception), status=exception.status_code)
 
     def process_exception(self, request, exception):
         if isinstance(exception, exceptions.ServiceError):
-            return HttpResponse(str(exception), status=exception.status_code)
+            return exception.to_response()
 
 
 class FunctionInfo:
@@ -64,6 +65,7 @@ class FunctionInfo:
       original: original function without decorators
       decorators: list of function decorators
       signature: function signature
+      annotations: dict of function annotations
     """
 
     def __init__(self, function):
@@ -101,25 +103,90 @@ class FunctionInfo:
         return "{}({})".format(self.__class__.__name__, self)
 
 
-def bind_form(data: dict, cls, signature: inspect.Signature = None):
+class RequestBinder:
+    """
+    Class that can bind request info to the various classes.
+    """
+
+    def __init__(self, request, existing_kwargs=None):
+        self.request = request
+        self.kwargs = existing_kwargs or {}
+
+    def bind_view(self, view) -> dict:
+        info = FunctionInfo(view)
+        return self._bind(info)
+
+    def _bind(self, info: FunctionInfo) -> dict:
+        """ Binds request to the parameters. """
+        out = {}
+        params = info.signature.parameters
+        if "post" in params:
+            cls = params["post"].annotation
+            cls_args = self.bind_callable(cls, exclude={"request", "post"})
+            out["post"] = cls(**cls_args)
+        else:
+            out = self.bind_params(params, exclude={"request"})
+        return out
+
+    def bind_get(self, params) -> dict:
+        out = {}
+        items = self.request.GET
+        for field, field_type, value in iter_params(items, params, exclude={"request"}):
+            if not isinstance(value, field_type):
+                raise exceptions.UserError(
+                    f"Parameter type of {field} mismatch: expected {field_type.__name__}"
+                )
+            out[field] = value
+        return out
+
+    def bind_callable(self, func: ty.Callable, exclude=None) -> dict:
+        params = cached_signature(func).parameters
+        return self.bind_params(params, exclude=exclude)
+
+    def bind_params(self, params: ty.Mapping, exclude=None) -> dict:
+        """ Binds request to the provided params."""
+        exclude = exclude or set()
+        out = {}
+        items = self.request.GET or self.request.POST
+        for field, field_type, value in iter_params(items, params, exclude=exclude):
+            if field in self.kwargs:
+                # field already provided by another middleware
+                continue
+            try:
+                out[field] = convert_arg(value, field_type.annotation)
+            except IndexError:  # empty list - no param provided
+                raise exceptions.UserError(
+                    f"Parameter {field!r} not provided"
+                ) from None
+        return out
+
+
+def bind_form(data: dict, cls=None, exclude=None):
     """
     Binds form to the class constructor.
     """
-    signature = signature or cached_signature(cls)
-    params = signature.parameters
-    log.debug("sig: %r, params: %s", signature, params)
-
+    params = FunctionInfo.from_cache(cls).signature.parameters
     kwargs = {}
-    # required_params = params
     for key, param in params.items():
-        if key == "request":
-            continue
         annotation = param.annotation
         val = getval(data, key)
-        kwargs[key] = convert_arg(val, annotation)
-    if dataclasses.is_dataclass(cls):
-        return cls(**kwargs)
-    raise exceptions.ServiceError("Failed to bind form")
+        try:
+            kwargs[key] = convert_arg(val, annotation)
+        except IndexError:  # empty list - no param provided
+            raise exceptions.UserError(f"Parameter {key} not provided") from None
+    if cls:
+        if dataclasses.is_dataclass(cls):
+            return cls(**kwargs)
+    return kwargs
+
+
+def iter_params(items: dict, params: ty.Mapping, exclude=None):
+    exclude = exclude or set()
+    for field, field_type in params.items():
+        if field in exclude:
+            continue
+        value = getval(items, field)
+        yield (field, field_type, value)
 
 
 def getval(data, key):

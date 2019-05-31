@@ -3,7 +3,7 @@ import logging
 import pytest
 from anchor.users.models import User
 
-from . import Client, PackageFactory
+from . import Client, PackageFactory, RequestFactory
 
 
 def pytest_configure():
@@ -21,6 +21,11 @@ def media_storage(settings, tmp_path):
 @pytest.fixture
 def client():
     return Client()
+
+
+@pytest.fixture
+def requests():
+    return RequestFactory()
 
 
 class UserFactory:

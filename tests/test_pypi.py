@@ -1,4 +1,5 @@
 import base64
+import io
 import subprocess
 import xmlrpc.client
 from pathlib import Path
@@ -6,7 +7,6 @@ from pathlib import Path
 import anchor
 import pytest
 from anchor.common.middleware import bind_form
-import io
 from anchor.pypi import models, services
 from anchor.pypi.models import Metadata, PackageFile, Project
 from packaging.utils import canonicalize_version
@@ -67,7 +67,8 @@ class PyPackageFactory(PackageFactory):
         user = user or self.user
         form = self.new_form(**kwargs)
         file = form.pop("content")
-        return services.upload_file(user, bind_form(form, Metadata), file)
+        metadata = bind_form(form, Metadata)
+        return services.upload_file(user, metadata, file)
 
 
 ############
@@ -76,8 +77,8 @@ class PyPackageFactory(PackageFactory):
 
 
 @pytest.yield_fixture
-def pypackages(tmp_path, user):
-    with PyPackageFactory(tmp_path, user) as factory:
+def pypackages(tmp_path):
+    with PyPackageFactory(tmp_path) as factory:
         yield factory
 
 
@@ -87,8 +88,8 @@ def form(pypackages):
 
 
 @pytest.fixture
-def package(pypackages):
-    return pypackages.new()
+def package(pypackages, user):
+    return pypackages.new(user=user)
 
 
 @pytest.fixture
@@ -130,7 +131,17 @@ def test_anonymous_upload(upload):
     assert upload() == 401
 
 
-def test_upload(upload):
+@pytest.mark.skip("WIP")
+def test_raw_upload(client):
+    data = io.BytesIO(b"12345test_package")
+    response = client.post(
+        "/py/upload/", {"content": data}, HTTP_AUTHORIZATION="test@localhost:123"
+    )
+    assert response == 200
+    assert 0
+
+
+def test_upload(upload, user):
     response = upload(auth="test@localhost:123")
     print(response.content)
     assert response == 200

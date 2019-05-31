@@ -3,12 +3,13 @@ import typing as ty
 from pathlib import Path
 
 import pytest
-from anchor.common.middleware import bind_form
 from anchor.packages import services
 from anchor.packages.models import Metadata, Package, PackageFile, PackageTypes
 from django.conf import settings
 from django.core.files import File
+from django.http.request import QueryDict
 from django.test import Client as django_client
+from django.test import RequestFactory as django_requests
 from django.test import TestCase as django_testcase
 
 __all__ = ["Client"]
@@ -20,6 +21,27 @@ class Client(django_client):
     def request(self, **request):
         response = super().request(**request)
         return Response(response)
+
+
+class RequestFactory(django_requests):
+    def get(  # pylint: disable=arguments-differ
+        self, path: str = "/test/", data: dict = None, **kwargs
+    ):
+        """ Construct a GET request. """
+        return super().get(path=path, data=self._prepare_data(data), **kwargs)
+
+    def post(  # pylint: disable=arguments-differ
+        self, path: str = "/test/", data: dict = None, **kwargs
+    ):
+        """ Construct a POST request. """
+        return super().post(path=path, data=self._prepare_data(data), **kwargs)
+
+    def _prepare_data(self, data):
+        if data:
+            qd = QueryDict(mutable=True)
+            qd.update(data)
+            return qd
+        return {}
 
 
 class TestCase(django_testcase):
@@ -51,13 +73,13 @@ class Response:
         Response body checking:
         >>> assert "<HTML>" in resp
         """
-        return value in self.orig.content.decode()
+        return value in str(self)
 
     def __repr__(self):
         return "{}({})".format(self.__class__.__name__, self.status_code)
 
     def __str__(self):
-        return str(self.orig)
+        return str(self.orig.content.decode())
 
 
 def to_dataclass(data: dict, cls: type):
@@ -95,9 +117,9 @@ class PackageFactory:
         self.user = user
 
     def new_metadata(self, **kwargs):
-        form = dict(name="anchor", version="0.1.0", summary="", description="")
-        form.update(kwargs)
-        return bind_form(form, Metadata)
+        data = dict(name="anchor", version="0.1.0", summary="", description="")
+        data.update(kwargs)
+        return Metadata(**data)
 
     def new_package(self, name="anchor"):
         """ Creates and saves new package object. """
