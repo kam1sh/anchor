@@ -1,12 +1,11 @@
 from __future__ import annotations
 
-import dataclasses
 import functools
 import inspect
 import logging
 import typing as ty
 
-from django.http import HttpResponse
+from django.http import HttpResponse, QueryDict
 from django.http.response import HttpResponseBase
 
 from .. import exceptions
@@ -61,11 +60,11 @@ class FunctionInfo:
     """
     Various information about function.
     Fields:
-      function: function that was passed
-      original: original function without decorators
-      decorators: list of function decorators
-      signature: function signature
-      annotations: dict of function annotations
+    - function: function that was passed
+    - original: original function without decorators
+    - decorators: list of function decorators
+    - signature: function signature
+    - annotations: dict of function annotations
     """
 
     def __init__(self, function):
@@ -105,45 +104,36 @@ class FunctionInfo:
 
 class RequestBinder:
     """
-    Class that can bind request info to the various classes.
+    Class that can bind request data to the various classes, function params etc.
     """
 
     def __init__(self, request, existing_kwargs=None):
         self.request = request
         self.kwargs = existing_kwargs or {}
 
-    def bind_view(self, view) -> dict:
+    def bind_view(self, view: ty.Callable) -> dict:
+        """Binds request to the view function"""
         info = FunctionInfo(view)
         return self._bind(info)
 
     def _bind(self, info: FunctionInfo) -> dict:
-        """ Binds request to the parameters. """
         out = {}
         params = info.signature.parameters
         if "post" in params:
+            # we've got the POST view, so we have to extract post annotation
+            # and look at her signature
             cls = params["post"].annotation
-            cls_args = self.bind_callable(cls, exclude={"request", "post"})
+            cls_args = self.bind_callable(cls)
             out["post"] = cls(**cls_args)
         else:
             out = self.bind_params(params, exclude={"request"})
         return out
 
-    def bind_get(self, params) -> dict:
-        out = {}
-        items = self.request.GET
-        for field, field_type, value in iter_params(items, params, exclude={"request"}):
-            if not isinstance(value, field_type):
-                raise exceptions.UserError(
-                    f"Parameter type of {field} mismatch: expected {field_type.__name__}"
-                )
-            out[field] = value
-        return out
-
-    def bind_callable(self, func: ty.Callable, exclude=None) -> dict:
+    def bind_callable(self, func: ty.Callable, exclude: ty.Container = None) -> dict:
         params = cached_signature(func).parameters
         return self.bind_params(params, exclude=exclude)
 
-    def bind_params(self, params: ty.Mapping, exclude=None) -> dict:
+    def bind_params(self, params: ty.Mapping, exclude: ty.Container = None) -> dict:
         """ Binds request to the provided params."""
         exclude = exclude or set()
         out = {}
@@ -161,46 +151,25 @@ class RequestBinder:
         return out
 
 
-def bind_form(data: dict, cls=None, exclude=None):
+def iter_params(
+    items: QueryDict, params: ty.Mapping[str, ty.Any], exclude: ty.Container[str] = None
+) -> ty.Iterator[ty.Tuple[str, inspect.Parameter, ty.Any]]:
     """
-    Binds form to the class constructor.
+    Yields field name, field type annotation and the items[value].
+    Accepts:
+
     """
-    params = FunctionInfo.from_cache(cls).signature.parameters
-    kwargs = {}
-    for key, param in params.items():
-        annotation = param.annotation
-        val = getval(data, key)
-        try:
-            kwargs[key] = convert_arg(val, annotation)
-        except IndexError:  # empty list - no param provided
-            raise exceptions.UserError(f"Parameter {key} not provided") from None
-    if cls:
-        if dataclasses.is_dataclass(cls):
-            return cls(**kwargs)
-    return kwargs
-
-
-def iter_params(items: dict, params: ty.Mapping, exclude=None):
     exclude = exclude or set()
     for field, field_type in params.items():
         if field in exclude:
             continue
-        value = getval(items, field)
+        value = items.getlist(field)
         yield (field, field_type, value)
 
 
-def getval(data, key):
-    if hasattr(data, "getlist"):
-        return data.getlist(key)
-    return data[key]
-
-
-def convert_arg(arg: ty.List[str], val_type: type):
-    # check in case of tests that passes usual dicts
-    if not isinstance(arg, list):
-        arg = [arg]  # type: ignore
+def convert_arg(arg: ty.List[str], val_type: ty.Type):
     if val_type in {str, "str"}:
         return arg[0]
-    if val_type in [ty.Iterable]:
-        return [val_type(x) for x in arg]
+    if issubclass(val_type, ty.Iterable):
+        return arg
     return val_type(arg[0])

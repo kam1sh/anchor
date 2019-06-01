@@ -1,7 +1,7 @@
 anchor
 =======
 
-Repository for python, debian and other packages with one REST API to rule them all.
+Package repository manager built for CI/CD environments.
 
 **Please advice: right now project in the very early state.**
 

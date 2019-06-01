@@ -1,6 +1,9 @@
+# Python package index API views.
+
 import functools
 import logging
 import re
+import typing as ty
 import xmlrpc.server
 from xmlrpc.client import Fault
 
@@ -24,6 +27,7 @@ __all__ = [
     "list_files",
     "download_file",
     "xmlrpc_dispatch",
+    "search",
 ]
 
 
@@ -36,8 +40,13 @@ def upload_package(request, post: Metadata):
     """
     Uploads new package to the server.
     If package with this filename already exists, it will be updated.
+
+    A few moments:
+
+    - Allowed only sdist and wheel (.tar.gz and .whl)
+    - Package name should not conflict with the Python standard library.
+    - Package name and version will be normalized if needed.
     """
-    # cl = request.META["CONTENT_LENGTH"] # could be useful in the future
     raw_file = request.FILES.get("content")
     if not raw_file:
         return badrequest('Provide package within "content" file.')
@@ -65,12 +74,16 @@ def download_file(request, filename: str):
 
 @csrf.csrf_exempt
 def xmlrpc_dispatch(request):
+    """
+    Dispatcher for any XML RPC methods.
+    Currently supports only `search(spec[, operator="and"])`.
+    """
     body = request.body
     params, methodname = xmlrpc.server.loads(data=body)
     log.debug("%s params: %s", methodname, params)
     if methodname == "search":
         try:
-            response = (_search(*params),)
+            response = tuple(search(*params))
         except UserError as e:
             response = Fault(400, str(e))
     else:
@@ -78,7 +91,23 @@ def xmlrpc_dispatch(request):
     return http.HttpResponse(xmlrpc.server.dumps(response, allow_none=True), "text/xml")
 
 
-def _search(spec: dict, operator="and"):
+def search(spec: ty.Mapping[str, ty.List[str]], operator: str = "and"):
+    """
+    Searches for the available packages.
+
+    Arguments:
+
+    - *spec*: fields and lists of values for search.
+    - *operator*: string with the operator for combination of specifications.
+
+    Example:
+    
+    >>> search({'name': ['foo'], 'summary': ['foo']}, 'or')
+    # -> all packages that name or summary contains 'foo'
+
+    Returns list of dicts with fields *name*, *version* and *summary*.
+    Warehouse implementation returns at most 100 packages, so did we.
+    """
     if not all(x in {"name", "summary"} for x in spec):
         raise UserError("Function supports only 'name' and 'summary' fields")
 

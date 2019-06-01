@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "anchor"
 version = "0.1.0"
-description = "Repository for python, debian and other packages with one REST API to rule them all."
+description = "Package repository manager built for CI/CD environments."
 authors = ["Igor Ovsyannikov <kamish@outlook.com>"]
 license = "MIT"
 readme = "README.rst"
@@ -30,6 +30,7 @@ pylint-django = "^2.0"
 rope = "^0.14.0"
 pytest-cov = "^2.7"
 django-coverage-plugin = "^1.6"
+sphinx_rtd_theme = "^0.4.3"
 
 [build-system]
 requires = ["poetry>=0.12"]

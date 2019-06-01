@@ -3,18 +3,30 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-anchor Project Documentation
-====================================================================
+Anchor project documentation
+============================
+
+Anchor is a package repository manager built for CI/CD environments.
+Right now it supports python packages only, rpm in the near future.
 
 Table of Contents:
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 4
+
+   python
+   retentions
+   API
 
 
-Indices & Tables
-================
+Developer documentation
+=======================
 
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
+.. toctree::
+    :maxdepth: 1
+
+    dev/python
+    dev/packaging
+    dev/middleware
+
+

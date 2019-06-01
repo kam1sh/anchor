@@ -6,7 +6,6 @@ from pathlib import Path
 
 import anchor
 import pytest
-from anchor.common.middleware import bind_form
 from anchor.pypi import models, services
 from anchor.pypi.models import Metadata, PackageFile, Project
 from packaging.utils import canonicalize_version
@@ -59,7 +58,7 @@ class PyPackageFactory(PackageFactory):
         form["filename"] = file.name
         form["sha256_digest"] = sha256sum(file)
         fd = file.open("rb")
-        form["content"] = fd  # File(fd, name=file.name)
+        form["content"] = fd
         return form
 
     def new(self, user=None, **kwargs):
@@ -67,7 +66,7 @@ class PyPackageFactory(PackageFactory):
         user = user or self.user
         form = self.new_form(**kwargs)
         file = form.pop("content")
-        metadata = bind_form(form, Metadata)
+        metadata = Metadata.from_dict(form)
         return services.upload_file(user, metadata, file)
 
 
@@ -116,7 +115,7 @@ def test_readers(form):
     """Tests for package reading (wheel and tar.gz)"""
     file = form.pop("content")
     file = models.ShaReader(file, 5120, assert_hash=form["sha256_digest"])
-    metadata = bind_form(form, Metadata)
+    metadata = Metadata.from_dict(form)
     pkg_file = PackageFile()
     pkg_file.update(src=file, metadata=metadata)
     origname = Path(file.name).name

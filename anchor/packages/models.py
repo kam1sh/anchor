@@ -14,6 +14,7 @@ from guardian.models import UserObjectPermission
 
 from ..exceptions import UserError
 from ..users.models import User
+from ..common.helpers import DataclassExtras
 
 log = logging.getLogger(__name__)
 
@@ -26,7 +27,7 @@ class PackageTypes(enum.Enum):
 
 
 @dataclasses.dataclass
-class Metadata:
+class Metadata(DataclassExtras):
     """ Package file metadata. """
 
     name: str

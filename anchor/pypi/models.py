@@ -8,6 +8,7 @@ import re
 import typing as ty
 from pathlib import Path
 
+# https://github.com/pypa/packaging
 import packaging.utils
 import pkg_resources
 import stdlib_list
@@ -27,7 +28,11 @@ allowed_files = re.compile(r".+\.(tar\.gz|whl)$", re.I)
 
 @dataclasses.dataclass
 class Metadata(base_models.Metadata):
-    """ Dataclass with a few extra checks. """
+    """
+    Dataclass with a few extra checks.
+
+    .. seealso:: https://packaging.python.org/specifications/core-metadata/
+    """
 
     filetype: str
     metadata_version: str

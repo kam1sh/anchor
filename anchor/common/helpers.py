@@ -1,3 +1,4 @@
+import dataclasses
 import functools
 import json
 
@@ -58,3 +59,13 @@ def _process_kwargs(meta, kwargs: dict) -> set:
     if exclude:
         fields = fields ^ set(exclude)
     return fields
+
+
+class DataclassExtras:
+    @classmethod
+    def from_dict(cls, data):
+        kwargs = {}
+        for field in dataclasses.fields(cls):
+            name = field.name
+            kwargs[name] = data[name]
+        return cls(**kwargs)
