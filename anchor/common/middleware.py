@@ -5,7 +5,7 @@ import inspect
 import logging
 import typing as ty
 
-from django.http import HttpResponse, QueryDict
+from django.http import HttpRequest, HttpResponse, QueryDict, HttpResponseNotAllowed
 from django.http.response import HttpResponseBase
 
 from .. import exceptions
@@ -37,6 +37,8 @@ class ExtraMiddleware:
         binder = RequestBinder(request, existing_kwargs=view_kwargs)
         try:
             kwargs = binder.bind_view(view_func)
+            if isinstance(kwargs, HttpResponseNotAllowed):
+                return kwargs
             view_kwargs.update(kwargs)
             response = view_func(request, *view_args, **view_kwargs)
             return self._wrap_json(response)
@@ -74,7 +76,7 @@ class FunctionInfo:
         # range(x) instead of `while True:` to avoid infinite loops
         for _ in range(128):
             # functools.wraps puts __wrapped__ attribute at the function
-            # that points at the wrapped function
+            # that points at the original function
             decorated = getattr(parent, "__wrapped__", None)
             if not decorated:
                 break
@@ -107,19 +109,21 @@ class RequestBinder:
     Class that can bind request data to the various classes, function params etc.
     """
 
-    def __init__(self, request, existing_kwargs=None):
+    def __init__(self, request: HttpRequest, existing_kwargs=None):
         self.request = request
         self.kwargs = existing_kwargs or {}
 
-    def bind_view(self, view: ty.Callable) -> dict:
+    def bind_view(self, view: ty.Callable) -> ty.Union[dict, HttpResponseNotAllowed]:
         """Binds request to the view function"""
         info = FunctionInfo(view)
         return self._bind(info)
 
-    def _bind(self, info: FunctionInfo) -> dict:
+    def _bind(self, info: FunctionInfo) -> ty.Union[dict, HttpResponseNotAllowed]:
         out = {}
         params = info.signature.parameters
         if "post" in params:
+            if self.request.method != "POST":
+                return HttpResponseNotAllowed(["POST"])
             # we've got the POST view, so we have to extract post annotation
             # and look at her signature
             cls = params["post"].annotation

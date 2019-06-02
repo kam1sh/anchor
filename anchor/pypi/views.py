@@ -75,8 +75,11 @@ def download_file(request, filename: str):
 @csrf.csrf_exempt
 def xmlrpc_dispatch(request):
     """
-    Dispatcher for any XML RPC methods.
-    Currently supports only `search(spec[, operator="and"])`.
+    Dispatcher for any `XML RPC`_ methods.
+    Currently supports only `search(spec[, operator="and"])`,
+    that is used by ``pip search``.
+
+    .. _`XML RPC`: https://docs.python.org/3/library/xmlrpc.html
     """
     body = request.body
     params, methodname = xmlrpc.server.loads(data=body)

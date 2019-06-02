@@ -130,16 +130,6 @@ def test_anonymous_upload(upload):
     assert upload() == 401
 
 
-@pytest.mark.skip("WIP")
-def test_raw_upload(client):
-    data = io.BytesIO(b"12345test_package")
-    response = client.post(
-        "/py/upload/", {"content": data}, HTTP_AUTHORIZATION="test@localhost:123"
-    )
-    assert response == 200
-    assert 0
-
-
 def test_upload(upload, user):
     response = upload(auth="test@localhost:123")
     print(response.content)

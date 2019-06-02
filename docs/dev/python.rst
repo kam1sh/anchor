@@ -55,16 +55,6 @@ but Anchor supports only .tar.gz (sdist) and .whl (wheel) .
 .. _`source code`: https://github.com/pypa/warehouse/blob/master/warehouse/forklift/legacy.py#L702
 .. _`PEP 527`: https://www.python.org/dev/peps/pep-0527/
 
-Search
-^^^^^^^
-
-There is also search method, that works via `XML RPC`_.
-Warehouse has `a bunch`_ of XML RPC, but for pip
-implementation of ``search(spec[, operator])`` is enough.
-
-.. _`a bunch`: https://warehouse.pypa.io/api-reference/xml-rpc/
-.. _`XML RPC`: https://docs.python.org/3/library/xmlrpc.html
-
 
 ---
 
@@ -92,8 +82,8 @@ implementation of ``search(spec[, operator])`` is enough.
 Reference
 ---------
 
-API
-^^^
+API views
+^^^^^^^^^
 
 .. automodule:: anchor.pypi.views
   :members:
