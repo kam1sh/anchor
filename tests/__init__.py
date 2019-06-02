@@ -23,18 +23,21 @@ class Client(django_client):
         return Response(response)
 
 
-class RequestFactory(django_requests):
+class RequestFactory:
+    def __init__(self):
+        self.factory = django_requests()
+
     def get(  # pylint: disable=arguments-differ
         self, path: str = "/test/", data: dict = None, **kwargs
     ):
         """ Construct a GET request. """
-        return super().get(path=path, data=self._prepare_data(data), **kwargs)
+        return self.factory.get(path=path, data=self._prepare_data(data), **kwargs)
 
     def post(  # pylint: disable=arguments-differ
         self, path: str = "/test/", data: dict = None, **kwargs
     ):
         """ Construct a POST request. """
-        return super().post(path=path, data=self._prepare_data(data), **kwargs)
+        return self.factory.post(path=path, data=self._prepare_data(data), **kwargs)
 
     def _prepare_data(self, data):
         if data:

@@ -13,7 +13,7 @@ import packaging.utils
 import pkg_resources
 import stdlib_list
 from django.db import models
-from django.shortcuts import reverse
+from django.urls import reverse
 
 from ..exceptions import ServiceError, UserError
 from ..packages import models as base_models

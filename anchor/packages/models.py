@@ -146,10 +146,10 @@ class PackageFile(PermissionAware):
         self.version = metadata.version
 
     @property
-    def path(self) -> ty.Optional[Path]:
+    def path(self) -> Path:
         if self.filename or self.fileobj.name:
             return Path(settings.MEDIA_ROOT, self.fileobj.name or self.filename)
-        return None  # mypy wants that
+        raise ValueError("There is no file")
 
     def __str__(self):
         return self.filename
