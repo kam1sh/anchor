@@ -31,7 +31,6 @@ rope = "^0.14.0"
 pytest-cov = "^2.7"
 django-coverage-plugin = "^1.6"
 sphinx_rtd_theme = "^0.4.3"
-django-stubs = "^0.12.1"
 
 [build-system]
 requires = ["poetry>=0.12"]

@@ -1,9 +1,13 @@
-from django.contrib.auth import get_user_model
+from django.contrib import auth
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.urls import reverse
 from django.views.generic import DetailView, ListView, RedirectView, UpdateView
 
-User = get_user_model()
+User = auth.get_user_model()
+
+
+class LoginPage(auth.views.LoginView):
+    template_name = "users/login.html"
 
 
 class UserDetailView(LoginRequiredMixin, DetailView):

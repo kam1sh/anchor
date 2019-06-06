@@ -44,6 +44,7 @@ class ExtraMiddleware:
             return self._wrap_json(response)
         # exceptions from process_view are not handled by process_exception (???)
         except exceptions.ServiceError as exception:
+            log.debug("Caught %r at view %s", exception, view_func.__name__)
             return exception.to_response()
 
     def _wrap_json(self, response) -> HttpResponse:
@@ -130,7 +131,9 @@ class RequestBinder:
             cls_args = self.bind_callable(cls)
             out["post"] = cls(**cls_args)
         else:
-            out = self.bind_params(params, exclude={"request"})
+            out = self.bind_params(
+                params, exclude={"self", "request", "args", "kwargs"}
+            )
         return out
 
     def bind_callable(self, func: ty.Callable, exclude: ty.Container = None) -> dict:
