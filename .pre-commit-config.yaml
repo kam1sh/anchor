@@ -6,7 +6,7 @@ repos:
   hooks:
   - id: check-added-large-files
     args:
-    - --maxkb=128
+    - --maxkb=768
   - id: check-ast
   - id: check-case-conflict
   - id: debug-statements

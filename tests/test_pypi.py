@@ -152,6 +152,7 @@ def test_search(package, client):
 
 
 def test_lists(package, client):
+    """ Lists of packages/files """
     name = package.name
     resp = client.get("/py/simple/")
     assert resp == 200

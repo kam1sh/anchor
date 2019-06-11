@@ -1,3 +1,5 @@
+from allauth.account.views import LoginView as AllauthLogin
+from allauth.account.forms import SignupForm
 from django.contrib import auth
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.urls import reverse
@@ -6,8 +8,13 @@ from django.views.generic import DetailView, ListView, RedirectView, UpdateView
 User = auth.get_user_model()
 
 
-class LoginPage(auth.views.LoginView):
-    template_name = "users/login.html"
+class LoginView(AllauthLogin):
+    template_name = "account/base-sign.html"
+    signup_form = SignupForm
+
+    def render_to_response(self, context, **kwargs):
+        context["signup_form"] = self.signup_form()
+        return super().render_to_response(context, **kwargs)
 
 
 class UserDetailView(LoginRequiredMixin, DetailView):

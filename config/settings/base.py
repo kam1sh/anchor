@@ -2,8 +2,6 @@
 Base settings to build other settings files upon.
 """
 
-import sys
-
 import environ
 
 ROOT_DIR = environ.Path(__file__) - 3  # (anchor/config/settings/base.py - 3 = anchor/)
@@ -60,7 +58,13 @@ DJANGO_APPS = [
     # "django.contrib.humanize", # Handy template tags
     "django.contrib.admin",
 ]
-THIRD_PARTY_APPS = ["crispy_forms", "guardian"]
+THIRD_PARTY_APPS = [
+    "crispy_forms",
+    "guardian",
+    "allauth",
+    "allauth.account",
+    "allauth.socialaccount",
+]
 LOCAL_APPS = [
     "anchor.users.apps.UsersAppConfig",
     "anchor.pypi.apps.PypiConfig",
@@ -70,16 +74,15 @@ LOCAL_APPS = [
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
 
 # MIGRATIONS
-# ------------------------------------------------------------------------------
 # https://docs.djangoproject.com/en/dev/ref/settings/#migration-modules
 MIGRATION_MODULES = {"sites": "anchor.contrib.sites.migrations"}
 
 # AUTHENTICATION
-# ------------------------------------------------------------------------------
 # https://docs.djangoproject.com/en/dev/ref/settings/#authentication-backends
 AUTHENTICATION_BACKENDS = [
     "django.contrib.auth.backends.ModelBackend",
     "guardian.backends.ObjectPermissionBackend",
+    "allauth.account.auth_backends.AuthenticationBackend",
 ]
 # https://docs.djangoproject.com/en/dev/ref/settings/#auth-user-model
 AUTH_USER_MODEL = "users.User"
@@ -88,8 +91,17 @@ LOGIN_REDIRECT_URL = "users:redirect"
 # https://docs.djangoproject.com/en/dev/ref/settings/#login-url
 LOGIN_URL = "account_login"
 
+# django-allauth
+# https://django-allauth.readthedocs.io/en/latest/configuration.html
+ACCOUNT_ALLOW_REGISTRATION = env.bool("DJANGO_ACCOUNT_ALLOW_REGISTRATION", True)
+ACCOUNT_AUTHENTICATION_METHOD = "username"
+ACCOUNT_EMAIL_REQUIRED = True
+ACCOUNT_EMAIL_VERIFICATION = "mandatory"
+ACCOUNT_ADAPTER = "anchor.users.adapters.AccountAdapter"
+SOCIALACCOUNT_ADAPTER = "anchor.users.adapters.SocialAccountAdapter"
+
+
 # PASSWORDS
-# ------------------------------------------------------------------------------
 # https://docs.djangoproject.com/en/dev/ref/settings/#password-hashers
 PASSWORD_HASHERS = [
     # https://docs.djangoproject.com/en/dev/topics/auth/passwords/#using-argon2-with-django

@@ -1,15 +1,10 @@
-{% extends "account/base.html" %}
-
-{% load i18n %}
+{% extends "account/base-sign.html" %}
 {% load crispy_forms_tags %}
 
-{% block head_title %}{% trans "Signup" %}{% endblock %}
+{% block head_title %}Sign up{% endblock %}
 
-{% block inner %}
-<h1>{% trans "Sign Up" %}</h1>
-
-<p>{% blocktrans %}Already have an account? Then please <a href="{{ login_url }}">sign in</a>.{% endblocktrans %}</p>
-
+{% block container %}
+<h1>Sign up</h1>
 <form class="signup" id="signup_form" method="post" action="{% url 'account_signup' %}">
   {% csrf_token %}
   {{ form|crispy }}

@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+
+{% block extra-css %}
+<style>
+    .body-container {
+        {% comment %} padding-top: 100px; {% endcomment %}
+        max-width: 400px;
+    }
+
+    button {
+        margin-top: 10px;
+    }
+</style>
+{% endblock %}
+
+{% comment %} disable navbar {% endcomment %}
+{% block nav-items %}{% endblock %}
+
+{% block container %}
+
+<ul class="nav nav-tabs" role="tablist">
+    <li class="nav-item">
+        <a class="nav-link active" id="signin-tab" aria-controls="signin" aria-selected="true"
+            data-toggle="tab" role="tab" href="#signin">Sign in</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" id="register-tab" aria-controls="register" aria-selected="false"
+            data-toggle="tab" role="tab" href="#register">Register</a>
+    </li>
+</ul>
+
+<div class="tab-content" id="tabContent">
+    <div class="tab-pane fade show active" id="signin" role="tabpanel" aria-labelledby="signin-tab">
+        <form class="form-signin" action="{% url 'account_login' %}" method="post">
+            {% csrf_token %}
+            {{ form|crispy }}
+            {% if redirect_field_value %}
+            <input type="hidden" name="{{ redirect_field_name }}" value="{{ redirect_field_value }}" />
+            {% endif %}
+            {% comment %} <input id="username" class="form-control" name="username" placeholder="Email" type="email">
+            <input id="password" class="form-control" name="password" placeholder="Password" type="password"> {% endcomment %}
+            <button class="btn btn-lg btn-primary btn-block" type="submit">Sign in</button>
+        </form>
+    </div>
+    <div class="tab-pane fade" id="register" role="tabpanel" aria-labelledby="register-tab">
+        {% if signup_form %}
+        <form class="form-register" action="{% url 'account_signup' %}" method="post">
+            {% csrf_token %}
+            {{ signup_form|crispy }}
+            <button class="btn btn-lg btn-primary btn-block" type="submit">Register</button>
+        </form>
+        {% elif signup_form == False %}
+            <p>Registration disabled by administrator.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
