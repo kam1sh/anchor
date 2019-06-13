@@ -18,7 +18,7 @@ class User(AbstractUser):
     REQUIRED_FIELDS = []  # type: ignore
 
     def get_absolute_url(self):
-        return reverse("users:detail", kwargs={"username": self.username})
+        return reverse("users:details", kwargs={"username": self.username})
 
     def __str__(self):
         return self.email

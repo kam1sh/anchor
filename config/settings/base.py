@@ -93,14 +93,19 @@ LOGIN_URL = "account_login"
 
 # django-allauth
 # https://django-allauth.readthedocs.io/en/latest/configuration.html
+#  signup/registration
 ACCOUNT_ALLOW_REGISTRATION = env.bool("DJANGO_ACCOUNT_ALLOW_REGISTRATION", True)
 ACCOUNT_SIGNUP_EMAIL_ENTER_TWICE = True
 ACCOUNT_SIGNUP_PASSWORD_ENTER_TWICE = False
+#  authentication
+ACCOUNT_LOGIN_ON_EMAIL_CONFIRMATION = True
+ACCOUNT_LOGOUT_REDIRECT_URL = "/users/login/"
 ACCOUNT_AUTHENTICATION_METHOD = "username_email"
-ACCOUNT_EMAIL_REQUIRED = True
-ACCOUNT_EMAIL_VERIFICATION = "mandatory"
 ACCOUNT_ADAPTER = "anchor.users.adapters.AccountAdapter"
 SOCIALACCOUNT_ADAPTER = "anchor.users.adapters.SocialAccountAdapter"
+#  model
+ACCOUNT_EMAIL_REQUIRED = True
+ACCOUNT_EMAIL_VERIFICATION = "mandatory"
 
 
 # PASSWORDS
