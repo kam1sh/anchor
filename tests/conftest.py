@@ -29,8 +29,8 @@ def requests():
 
 
 class UserFactory:
-    def new(self, email, password="123"):
-        return User.objects.create_user(email, email=email, password=password)
+    def new(self, email, login=None, password="123"):
+        return User.objects.create_user(login or email, email=email, password=password)
 
 
 @pytest.fixture

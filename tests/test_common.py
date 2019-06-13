@@ -5,10 +5,12 @@ from unittest import TestCase
 
 import pytest
 from anchor import exceptions
-from anchor.common import debug, middleware
+from anchor.common import debug, middleware, views
 from anchor.common.middleware import RequestBinder
 from django.http.request import QueryDict
 from pytest import mark
+
+from . import basic_auth
 
 
 @pytest.fixture(autouse=True)
@@ -31,6 +33,20 @@ def test_exception_response():
     response = exc.to_response()
     assert exc.status_code == response.status_code
     assert str(exc) == response.content.decode()
+
+
+def test_auth(users, requests, client):
+    users.new("test2@localhost", login="test2")
+    user = dict(login="test2@localhost", password="123")
+    value = "Basic: dGVzdDJAbG9jYWxob3N0OjEyMw=="
+
+    assert basic_auth(**user) == value
+    dct = {}  # type: ignore
+    basic_auth(request=dct, **user)
+    assert dct.get("HTTP_AUTHORIZATION") == value
+    req = requests.get()
+    basic_auth(request=req, **user)
+    assert "HTTP_AUTHORIZATION" in req.META
 
 
 @mark.unit

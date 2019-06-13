@@ -5,6 +5,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.urls import reverse
 from django.views.generic import DetailView, ListView, RedirectView, UpdateView
 
+
 User = auth.get_user_model()
 
 
@@ -25,6 +26,11 @@ class UserDetailView(LoginRequiredMixin, DetailView):
 
 
 user_detail_view = UserDetailView.as_view()
+
+
+@auth.decorators.login_required
+def current_user(request):
+    return user_detail_view(request, username=request.user.username)
 
 
 class UserListView(LoginRequiredMixin, ListView):
@@ -57,7 +63,9 @@ class UserRedirectView(LoginRequiredMixin, RedirectView):
     permanent = False
 
     def get_redirect_url(self):
-        return reverse("users:details", kwargs={"username": self.request.user.username})
+        return (
+            "/"
+        )  # reverse("users:details", kwargs={"username": self.request.user.username})
 
 
 user_redirect_view = UserRedirectView.as_view()

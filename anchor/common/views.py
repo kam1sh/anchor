@@ -4,8 +4,14 @@ This package contains useful decorators for any django applications.
 import base64
 import functools
 
+from allauth.account.forms import LoginForm
 from django.contrib import auth
 from django.http import HttpResponse
+from django.urls import reverse
+
+from .. import exceptions
+
+__all__ = ["basic_auth"]
 
 
 def basic_auth(func):
@@ -37,8 +43,8 @@ def _auth(request):
     if not header:
         return None
     header = header.split()[1]
-    email, password = base64.b64decode(header).decode().split(":")
-    user = auth.authenticate(request, email=email, password=password)
+    login, password = base64.b64decode(header).decode().split(":")
+    user = auth.authenticate(request, username=login, password=password)
     if not user:
         return False
     auth.login(request, user)

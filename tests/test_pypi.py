@@ -1,4 +1,3 @@
-import base64
 import io
 import subprocess
 import xmlrpc.client
@@ -10,7 +9,7 @@ from anchor.pypi import models, services
 from anchor.pypi.models import Metadata, PackageFile, Project
 from packaging.utils import canonicalize_version
 
-from . import PackageFactory, TestCase
+from . import PackageFactory, TestCase, basic_auth
 from .conftest import UserFactory
 
 FORM = {
@@ -93,13 +92,11 @@ def package(pypackages, user):
 
 @pytest.fixture
 def upload(pypackages, client, db):
-    def uploader(auth=None, **kwargs):
+    def uploader(login=None, password=None, **kwargs):
         form = pypackages.new_form(**kwargs)
         kwargs = {}
-        if auth:
-            kwargs["HTTP_AUTHORIZATION"] = "Basic: {}".format(
-                base64.b64encode(auth.encode()).decode()
-            )
+        if login:
+            basic_auth(login, password, request=kwargs)
         return client.post("/py/upload/", form, **kwargs)
 
     return uploader
@@ -130,13 +127,15 @@ def test_anonymous_upload(upload):
     assert upload() == 401
 
 
-def test_upload(upload, user):
-    response = upload(auth="test@localhost:123")
+def test_upload(upload, users):
+    user = users.new(email="test2@localhost", login="test2")
+    response = upload(login="test2@localhost", password="123")
     print(response.content)
     assert response == 200
     assert PackageFile.objects.all()
     assert PackageFile.objects.get().path.exists(), "File does not exists!"
-    assert upload(auth="test@localhost:123") == 200
+    assert upload(login="test2@localhost", password="123") == 200
+    assert upload(login="test2", password="123") == 200
 
 
 def test_download(package, client):

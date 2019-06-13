@@ -1,18 +1,21 @@
+import base64
 import random
 import typing as ty
 from pathlib import Path
 
 import pytest
-from anchor.packages import services
-from anchor.packages.models import Metadata, Package, PackageFile, PackageTypes
 from django.conf import settings
 from django.core.files import File
-from django.http.request import QueryDict
+from django.http.request import QueryDict, HttpRequest
 from django.test import Client as django_client
 from django.test import RequestFactory as django_requests
 from django.test import TestCase as django_testcase
 
-__all__ = ["Client"]
+from anchor.packages import services
+from anchor.packages.models import Metadata, Package, PackageFile, PackageTypes
+
+
+__all__ = ["Client, RequestFactory, basic_auth"]
 
 
 class Client(django_client):
@@ -48,7 +51,7 @@ class RequestFactory:
 
 
 class TestCase(django_testcase):
-    client_class = Client
+    client_class = Client()
     get = property(lambda self: self.client.get)
     post = property(lambda self: self.client.post)
 
@@ -89,6 +92,18 @@ def to_dataclass(data: dict, cls: type):
     """Converts dict to dataclass."""
     data = {k: v for k, v in data.items() if k in cls.__annotations__}
     return cls(**data)
+
+
+def basic_auth(
+    login: str, password: str, request: ty.Union[dict, HttpRequest] = None
+) -> ty.Union[str, dict, HttpRequest]:
+    value = f"{login}:{password}".encode()
+    header = "Basic: {}".format(base64.b64encode(value).decode())
+    if request is None:
+        return header
+    headers = request if isinstance(request, dict) else request.META
+    headers["HTTP_AUTHORIZATION"] = header
+    return request
 
 
 # subclassing pathlib.Path is kinda hard.
