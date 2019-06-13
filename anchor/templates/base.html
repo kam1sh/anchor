@@ -16,11 +16,15 @@
     <!-- Latest compiled and minified Bootstrap CSS -->
     <link href="{% static 'css/bootstrap.min.css' %}" rel="stylesheet">
 
-
     <!-- This file stores project-specific CSS -->
     <link href="{% static 'css/project.css' %}" rel="stylesheet">
     {% endblock %}
+    <style>
+    .asteriskField {
+        display: none;
+    }
     {% block extra-css %}{% endblock %}
+    </style>
 
 </head>
 
@@ -40,11 +44,23 @@
 
             {% block nav-items %}
             <ul class="navbar-nav mr-auto">
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                        Packages
+                    </a>
+                    <div class="dropdown-menu" aria-labelledby="navbarDropdown">
+                        <a class="dropdown-item" href="/">My packages</a>
+                        <a class="dropdown-item" href="#">Starred packages</a>
+                        <a class="dropdown-item" href="#">Explore packages</a>
+                    </div>
+                </li>
                 <li class="nav-item">
                     <a class="nav-link" href="{% url 'about' %}">About</a>
                 </li>
                 {% if request.user.is_authenticated %}
-                <li class="nav-item">Logged as {{ request.user.username }}</li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'users:details' request.user.username %}">{{ request.user.username }} profile </a>
+                </li>
                 <li class="nav-item">
                     <a class="nav-link" href="{% url 'account_logout' %}">Logout</a>
                 </li>
@@ -76,7 +92,7 @@
 
     </div> <!-- /container -->
 
-    {% block modal %}{% endblock modal %}
+    {% block content %}{% endblock %}
 
     <!-- Placed at the end of the document so the pages load faster -->
     {% block javascript %}

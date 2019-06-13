@@ -1,21 +1,7 @@
-{% extends "base.html" %}
+{% extends "account/base.html" %}
 {% load crispy_forms_tags %}
 
-{% block extra-css %}
-<style>
-    .body-container {
-        {% comment %} padding-top: 100px; {% endcomment %}
-        max-width: 400px;
-    }
 
-    button {
-        margin-top: 10px;
-    }
-</style>
-{% endblock %}
-
-{% comment %} disable navbar {% endcomment %}
-{% block nav-items %}{% endblock %}
 
 {% block container %}
 
@@ -38,8 +24,7 @@
             {% if redirect_field_value %}
             <input type="hidden" name="{{ redirect_field_name }}" value="{{ redirect_field_value }}" />
             {% endif %}
-            {% comment %} <input id="username" class="form-control" name="username" placeholder="Email" type="email">
-            <input id="password" class="form-control" name="password" placeholder="Password" type="password"> {% endcomment %}
+            <a class="button secondaryAction" href="{% url 'account_reset_password' %}">Forgot Password?</a>
             <button class="btn btn-lg btn-primary btn-block" type="submit">Sign in</button>
         </form>
     </div>
@@ -50,7 +35,7 @@
             {{ signup_form|crispy }}
             <button class="btn btn-lg btn-primary btn-block" type="submit">Register</button>
         </form>
-        {% elif signup_form == False %}
+        {% else %}
             <p>Registration disabled by administrator.</p>
         {% endif %}
     </div>
