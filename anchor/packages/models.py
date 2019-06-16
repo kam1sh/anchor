@@ -72,6 +72,8 @@ class Package(PermissionAware):
     updated = models.DateTimeField("Last updated")
     # updated with the new package version
     description = models.TextField("Description", null=True)
+    downloads = models.IntegerField("Downloads count", default=0)
+    public = models.BooleanField("Package visible to all", default=True)
 
     class Meta:
         unique_together = ["pkg_type", "name"]
@@ -92,6 +94,23 @@ class Package(PermissionAware):
 
     def update_time(self):
         self.updated = timezone.now()
+
+    def details_url(self):
+        return ""  # TODO
+
+    def download_url(self) -> ty.Optional[str]:
+        """
+        Returns URL with latest available
+        package file, if package has any.
+        """
+        return ""  # TODO
+
+    def download_bundle(self):
+        """
+        Same as download_url, but instead of one file
+        it returns archive with all dependencies.
+        """
+        return ""  # TODO
 
     def __str__(self):
         return self.name + " " + self.version

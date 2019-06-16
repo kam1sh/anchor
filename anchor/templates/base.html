@@ -1,11 +1,12 @@
 {% load static i18n %}
+{% load humanize %}
 <!DOCTYPE html>
 <html lang="en">
 
 <head>
     <meta charset="utf-8">
     <meta http-equiv="x-ua-compatible" content="ie=edge">
-    <title>{% block title %}{% endblock title %} - Anchor</title>
+    <title>{% block title %}Packages{% endblock title %} - Anchor</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="">
     <meta name="author" content="">
@@ -27,6 +28,7 @@
     form {
         max-width: 400px;
     }
+    {% comment %} #id-selector {% endcomment %}
     {% block extra-css %}{% endblock %}
     </style>
 
@@ -92,6 +94,30 @@
         {% endif %}
 
         {% block container %}
+            {% if package_list %}
+            <h3>Packages</h3>
+            
+            <ul class="list-group">
+                {% for package in package_list %}
+                <li class="list-group-item">
+                    <div class="d-flex w-100 justify-content-between">
+                        <a href="{{ package.details_url }}">
+                            <h4 class="list-group-item-heading">{{ package }}</h4>
+                        </a>
+                        <small class="text-muted">{{ package.downloads | intcomma }} downloads</small>
+                    </div>
+                    <p class="mb-1">{{ package.summary }}</p>
+                    {% if package.download_url %}
+                    <h6>
+                        <a href="{{ package.download_url }}">download</a>
+                        or
+                        <a href="{{ package.download_url }}/bundle">download bundle</a>
+                    </h6>
+                    {% endif %}
+                </li>
+                {% endfor %}
+            </ul>
+            {% endif %}
         {% endblock container %}
 
     </div> <!-- /container -->
@@ -99,12 +125,12 @@
     {% block content %}{% endblock %}
 
     <!-- Placed at the end of the document so the pages load faster -->
-    {% block javascript %}
     <!-- Bootstrap JS and its dependencies-->
     <script src="{% static 'js/jquery-3.3.1.slim.min.js' %}"></script>
     <script src="{% static 'js/popper.min.js' %}"></script>
     <script src="{% static 'js/bootstrap.min.js' %}"></script>
 
+    {% block javascript %}
     <script src="{% static 'js/project.js' %}"></script>
     {% endblock javascript %}
 </body>
