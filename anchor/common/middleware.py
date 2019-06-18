@@ -5,7 +5,7 @@ import inspect
 import logging
 import typing as ty
 
-from django.http import HttpRequest, HttpResponse, QueryDict, HttpResponseNotAllowed
+from django.http import HttpRequest, HttpResponse, HttpResponseNotAllowed, QueryDict
 from django.http.response import HttpResponseBase
 
 from .. import exceptions

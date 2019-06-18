@@ -14,12 +14,13 @@ import sys
 
 import django
 
+import anchor
+
 sys.path.insert(0, os.path.abspath("../"))
 
 # Initialize django applcation so sphinx can read package contents
 # and build reference documentation from that
 os.environ["DJANGO_SETTINGS_MODULE"] = "config.settings.local"
-import anchor
 
 django.setup()
 

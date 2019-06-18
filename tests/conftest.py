@@ -1,6 +1,7 @@
 import logging
 
 import pytest
+
 from anchor.users.models import User
 
 from . import Client, PackageFactory, RequestFactory

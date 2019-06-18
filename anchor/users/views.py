@@ -1,10 +1,9 @@
-from allauth.account.views import LoginView as AllauthLogin
 from allauth.account.forms import SignupForm
+from allauth.account.views import LoginView as AllauthLogin
 from django.contrib import auth
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.urls import reverse
 from django.views.generic import DetailView, ListView, RedirectView, UpdateView
-
 
 User = auth.get_user_model()
 

@@ -6,14 +6,13 @@ from pathlib import Path
 import pytest
 from django.conf import settings
 from django.core.files import File
-from django.http.request import QueryDict, HttpRequest
+from django.http.request import HttpRequest, QueryDict
 from django.test import Client as django_client
 from django.test import RequestFactory as django_requests
 from django.test import TestCase as django_testcase
 
 from anchor.packages import services
 from anchor.packages.models import Metadata, Package, PackageFile, PackageTypes
-
 
 __all__ = ["Client, RequestFactory, basic_auth"]
 

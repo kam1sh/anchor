@@ -4,11 +4,12 @@ from dataclasses import dataclass
 from unittest import TestCase
 
 import pytest
+from django.http.request import QueryDict
+from pytest import mark
+
 from anchor import exceptions
 from anchor.common import debug, middleware, views
 from anchor.common.middleware import RequestBinder
-from django.http.request import QueryDict
-from pytest import mark
 
 from . import basic_auth
 

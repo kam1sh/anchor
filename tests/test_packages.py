@@ -1,4 +1,5 @@
 import pytest
+
 from anchor import exceptions
 from anchor.packages import models
 
@@ -44,8 +45,8 @@ def test_owner_upload(packages, users):
 
 def test_upload_permissions(packages, users):
     usr = users.new("test2@localhost")
-    package = packages.new_file()
-    package.package.give_access(usr, "add")
+    file = packages.new_file()
+    usr.give_access(file.package, role="developer")
     usr.save()
     packages.new_file(user=usr, version="0.2.0")
     # assert upload(auth="test2@localhost:123", version="0.2.0") == 200

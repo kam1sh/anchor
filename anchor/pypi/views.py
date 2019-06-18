@@ -69,6 +69,8 @@ def list_files(request, name: str):
 
 def download_file(request, filename: str):
     pkg_file = get_object_or_404(PackageFile, filename=filename)
+    pkg_file.package.downloads += 1
+    pkg_file.package.save()
     return http.FileResponse(pkg_file.fileobj)
 
 

@@ -3,11 +3,12 @@ import subprocess
 import xmlrpc.client
 from pathlib import Path
 
-import anchor
 import pytest
+from packaging.utils import canonicalize_version
+
+import anchor
 from anchor.pypi import models, services
 from anchor.pypi.models import Metadata, PackageFile, Project
-from packaging.utils import canonicalize_version
 
 from . import PackageFactory, TestCase, basic_auth
 from .conftest import UserFactory
@@ -86,7 +87,7 @@ def form(pypackages):
 
 
 @pytest.fixture
-def package(pypackages, user):
+def file(pypackages, user):
     return pypackages.new(user=user)
 
 
@@ -138,24 +139,26 @@ def test_upload(upload, users):
     assert upload(login="test2", password="123") == 200
 
 
-def test_download(package, client):
-    assert client.get(f"/py/download/{package.filename}") == 200
+def test_download(file, client):
+    assert client.get(f"/py/download/{file.filename}") == 200
+    file.package.refresh_from_db()
+    assert file.package.downloads == 1
 
 
-def test_search(package, client):
-    name = package.name
+def test_search(file, client):
+    name = file.name
     data = xmlrpc.client.dumps((dict(name=[name]), "and"), "search")
     response = client.post("/py/", data=data, content_type="text/xml")
     assert response == 200
     assert name in response
 
 
-def test_lists(package, client):
+def test_lists(file, client):
     """ Lists of packages/files """
-    name = package.name
+    name = file.name
     resp = client.get("/py/simple/")
     assert resp == 200
     assert name in resp
     resp = client.get(f"/py/simple/{name}/")
     assert resp == 200
-    assert package.filename in resp
+    assert file.filename in resp

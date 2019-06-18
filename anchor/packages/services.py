@@ -27,7 +27,7 @@ class Uploader:
         self.fd = fd
         try:
             package = self.pkg.objects.get(name=metadata.name)
-            if not package.available_to(user, "add"):
+            if not package.available_to(user, role="developer"):
                 raise Forbidden(f"You have no access to upload files in {package.name}")
         except self.pkg.DoesNotExist:
             package = self.pkg()
@@ -36,7 +36,7 @@ class Uploader:
 
         try:
             pkg_file = self.pkg_file.objects.get(filename=fd.name)
-            if not pkg_file.available_to(user, "change"):
+            if not package.available_to(user, role="maintainer"):
                 raise Forbidden("You have no access to rewrite this file")
         except self.pkg_file.DoesNotExist:
             pkg_file = self.pkg_file()

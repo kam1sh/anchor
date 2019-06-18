@@ -12,11 +12,11 @@ Package
 
 Package is a set of files that represents
 different versions/formats of one project.
-Package has next settings:
+Package has next attributes:
 
 - Retention policy with rules
   when a file could be removed or should be kept.
-- Permissions, who could upload/reupload/remove files.
+- Set of roles that references to a user or a group.
 
 Package could be created manually from the UI or automatically,
 when the new file could not be assigned to any existing package.
@@ -49,8 +49,8 @@ For example, if you run some policy, the next things will happen:
 If user try to upload huge file and there is no available space
 even after retention, he will get HTTP 413 (payload too large).
 
-Permissions
-^^^^^^^^^^^
+Roles
+^^^^^
 
 Like any other system, Anchor has access control features.
 Model is similar to `GitLab`_:
@@ -60,7 +60,7 @@ Model is similar to `GitLab`_:
 - Maintainer can do everything with files, edit some package settings
   (i.e. retention policy) and user permissions.
 - Developer can upload new files and remove ones that belongs to him.
-- Everyone else has access to get package info and download files.
+- Everyone else has access to read package info and download files.
 
 .. _`GitLab`: https://docs.gitlab.com/ce/user/permissions.html
 

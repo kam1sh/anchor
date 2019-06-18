@@ -1,11 +1,11 @@
 from django.urls import path
 
 from anchor.users.views import (
+    LoginView,
     user_detail_view,
     user_list_view,
     user_redirect_view,
     user_update_view,
-    LoginView,
 )
 
 app_name = "users"

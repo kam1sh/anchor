@@ -8,7 +8,7 @@ from .models import Package
 
 class Index(ListView):
     model = Package
-    template_name = "pages/home.html"
+    template_name = "base.html"
 
     def get_queryset(self):
         """
@@ -19,3 +19,17 @@ class Index(ListView):
             return self.model.objects.filter(owner=self.request.user)
         else:
             return self.model.objects.filter(public=True)
+
+
+class PackageDetail(DetailView):
+    model = Package
+    template_name = "packages/detail.html"
+
+    def get_object(self):
+        package = self.model.objects.get(id=self.kwargs["id"])
+        return package
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        # context["rights"] =
+        return context
