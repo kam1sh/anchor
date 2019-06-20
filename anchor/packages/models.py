@@ -9,6 +9,7 @@ from pathlib import Path
 
 from django.conf import settings
 from django.db import models
+from django.urls import reverse
 from django.utils import timezone
 
 from ..common.helpers import DataclassExtras
@@ -50,6 +51,21 @@ class Package(PermissionAware):
     downloads = models.IntegerField("Downloads count", default=0)
     public = models.BooleanField("Package visible to all", default=True)
 
+    _permissions = {
+        "maintainer": "remove_files",
+        "developer": "upload",
+        "guest": "read",
+    }
+
+    def has_permission(self, user, permission):
+        if permission == "read" and self.public:
+            return True
+        return super().has_permission(user, permission)
+
+    @property
+    def files(self):
+        return PackageFile.objects.filter(package=self)
+
     class Meta:
         unique_together = ["pkg_type", "name"]
         # index_together?
@@ -70,8 +86,8 @@ class Package(PermissionAware):
     def update_time(self):
         self.updated = timezone.now()
 
-    def details_url(self):
-        return ""  # TODO
+    def detail_url(self):
+        return reverse("packages:details", kwargs={"id": self.id})
 
     def download_url(self) -> ty.Optional[str]:
         """
@@ -108,6 +124,9 @@ class ChunkedReader:
     def __iter__(self):
         yield from iter(lambda: self.read(2048), b"")
 
+    def chunks(self):
+        return iter(self)
+
     def read(self, size=None):
         chunk = self.src.read(size)
         self.size += len(chunk)
@@ -115,9 +134,14 @@ class ChunkedReader:
             log.debug("Calculated size: %s", self.size)
             raise UserError(f"File size exceeds available ({self.max_size} bytes)")
         # end of file and size is still zero
-        if not chunk and not self.size:
-            raise UserError("Empty file")
+        if not chunk:
+            self.uploaded()
         return chunk
+
+    def uploaded(self):
+        """ Triggered when file has been uploaded. """
+        if not self.size:
+            raise UserError("Empty file")
 
 
 class PackageFile(models.Model):
@@ -132,8 +156,7 @@ class PackageFile(models.Model):
 
     def update(self, src: ChunkedReader, metadata):
         self.fileobj.save(src.name, src, save=False)
-        log.debug("Saved file to %s", self.path)
-        # src.run() # TODO
+        log.debug("Saved file (%s bytes) to %s", src.size, self.path)
         self.filename = Path(src.name).name
         self.size = src.size
         self.uploaded = timezone.now()

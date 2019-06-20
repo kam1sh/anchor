@@ -106,7 +106,7 @@ def search(spec: ty.Mapping[str, ty.List[str]], operator: str = "and"):
     - *operator*: string with the operator for combination of specifications.
 
     Example:
-    
+
     >>> search({'name': ['foo'], 'summary': ['foo']}, 'or')
     # -> all packages that name or summary contains 'foo'
 

@@ -16,6 +16,7 @@ urlpatterns = [
     path(settings.ADMIN_URL, admin.site.urls),
     path("accounts/", include("allauth.urls")),
     path("users/", include("anchor.users.urls", namespace="users")),
+    path("packages/", include("anchor.packages.urls", namespace="packages")),
     path("py/", include("anchor.pypi.urls")),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 

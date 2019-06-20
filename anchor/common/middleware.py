@@ -5,6 +5,7 @@ import inspect
 import logging
 import typing as ty
 
+from django.contrib.auth.views import redirect_to_login
 from django.http import HttpRequest, HttpResponse, HttpResponseNotAllowed, QueryDict
 from django.http.response import HttpResponseBase
 
@@ -46,6 +47,9 @@ class ExtraMiddleware:
         except exceptions.ServiceError as exception:
             log.debug("Caught %r at view %s", exception, view_func.__name__)
             return exception.to_response()
+        except exceptions.LoginRedirect as exception:
+            log.debug("Login redirect at %s", request.user)
+            return redirect_to_login(next=request.get_full_path())
 
     def _wrap_json(self, response) -> HttpResponse:
         if not isinstance(response, HttpResponseBase):

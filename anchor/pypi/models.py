@@ -60,13 +60,17 @@ class ShaReader(base_models.ChunkedReader):
     def __init__(self, src, max_size_kb, assert_hash=None):
         super().__init__(src, max_size_kb)
         self.hash = assert_hash
-        self.sha256 = hashlib.sha256()
+        self.sha256 = None
+        self._sha256 = hashlib.sha256()
 
-    def __iter__(self):
-        for chunk in super().__iter__():
-            self.sha256.update(chunk)
-            yield chunk
-        self.sha256 = self.sha256.hexdigest()
+    def read(self, size=None):
+        chunk = super().read(size)
+        self._sha256.update(chunk)
+        return chunk
+
+    def uploaded(self):
+        super().uploaded()
+        self.sha256 = self._sha256.hexdigest()
         if self.sha256 != self.hash:
             raise UserError(
                 f"Form checksum does not match checksum from the file {self.sha256}"

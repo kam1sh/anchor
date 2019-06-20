@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+{% block title %}{{ object.name }} details{% endblock %}
+
+{% block container %}
+<h2>{{ object.name }}</h2>
+<div class="row">
+    <nav class="nav flex-column col-md-2 d-none d-md-block bg-light sidebar">
+        <a class="nav-link" href="{{ object.detail_url }}">Overview</a>
+        <a class="nav-link" href="#">Files</a>
+        <a class="nav-link" href="#">Settings</a>
+        <a class="nav-link" href="#">Permissions</a>
+    </nav>
+    <main class="col-md-9 ml-sm-auto col-lg-10 px-4">
+
+        <p>{{ object.description }}</p>
+        <hr>
+        <h3>Latest files</h3>
+        {% if files %}
+        <table class="table">
+            <thead>
+                <th>Filename</th>
+                <th>Version</th>
+                <th>Size</th>
+                <th>Upload date</th>
+            </thead>
+            <tbody>
+            {% for file in files %}
+            <tr>
+                <td><a href="{% url 'pypi.download' file.filename %}">{{ file.filename }}</a></td>
+                <td>{{ file.version }}</td>
+                <td>{{ file.size }}</td>
+                <td>{{ file.uploaded }}</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p>Package has no files.</p>
+        {% endif %}
+        {% comment %} <div class="list-group">
+            <div class="list-group-item">
+                <h5>{{ file.filename }}</h5>
+            </div>
+        </div> {% endcomment %}
+    </main>
+</div>
+{% endblock container %}

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import enum
+import functools
 import logging
 import typing as ty
 
@@ -8,8 +9,6 @@ from django.contrib.auth.models import AbstractUser, Group
 from django.db import models
 from django.db.models import CharField, EmailField, Min, Model
 from django.urls import reverse
-from django.utils.translation import ugettext_lazy as _
-from guardian.models import UserObjectPermission
 
 log = logging.getLogger(__name__)
 
@@ -21,7 +20,7 @@ class User(AbstractUser):
 
     # First Name and Last Name do not cover name patterns
     # around the globe.
-    name = CharField(_("Name of User"), blank=True, max_length=255)
+    name = CharField("Name of User", blank=True, max_length=255)
     # redefined field to make it unique and not blank
     email = EmailField("email address", blank=False, unique=True)
 
@@ -32,7 +31,8 @@ class User(AbstractUser):
     def get_absolute_url(self):
         return reverse("users:details", kwargs={"username": self.username})
 
-    def give_access(self, obj, role: RoleLike):
+    def give_access(self, obj: PermissionAware, role: RoleLike):
+        """ Gives user access to provided object. """
         roletype = to_roletype(role)
         role_obj = UserRole(user=self, level=roletype)
         role_obj.save()
@@ -42,37 +42,52 @@ class User(AbstractUser):
         return self.email
 
 
-def to_roletype(value: RoleLike) -> int:
-    if isinstance(value, str):
-        return getattr(RoleType, value.capitalize())
-    elif isinstance(value, RoleType):
-        return value
-    elif isinstance(value, int):
-        try:
-            return RoleType(value)
-        except ValueError:
-            return value
-    raise ValueError(value)
-
-
 class RoleType(enum.IntEnum):
-    Maintainer = 10
-    Developer = 100
-    Guest = 200
+    """ Enum with roles and their access levels """
+
+    owner = 0
+    maintainer = 10
+    developer = 100
+    guest = 200
+    anonymous = 999
 
 
 RoleLike = ty.Union[RoleType, str, int]
+
+
+@functools.singledispatch
+def to_roletype(value: RoleLike) -> RoleType:
+    """ Converts value to RoleType. """
+    raise ValueError(value)
+
+
+@to_roletype.register
+def _str(value: str):
+    return getattr(RoleType, value.lower())
+
+
+@to_roletype.register
+def _rt(value: RoleType):
+    return value
+
+
+@to_roletype.register
+def _int(value: int):
+    return RoleType(value)
 
 
 class Role(Model):
     level = models.PositiveIntegerField()
 
     def __str__(self):
-        return str(self.value)
+        return self.name
 
     @property
-    def value(self) -> int:
-        return to_roletype(self.level)
+    def name(self) -> str:
+        try:
+            return to_roletype(self.level).name
+        except ValueError:
+            return "<not set>"
 
 
 class UserRole(Role):
@@ -88,34 +103,56 @@ class PermissionAware(models.Model):
     user_roles = models.ManyToManyField(UserRole)
     group_roles = models.ManyToManyField(GroupRole)
 
+    _permissions: ty.Mapping[RoleLike, ty.Union[set, str]] = {}
+
     class Meta:
         abstract = True
 
-    def available_to(self, user, role: RoleLike) -> bool:
+    def has_role(self, user, role: RoleLike) -> bool:
+        """ Checks if user has a role. """
         log.debug("owner: %r, user: %r", self.owner, user)
         return (
             self.owner == user
             or user.is_superuser
-            or self._effective_user_role(user) <= to_roletype(role)
+            or self.effective_level(user) <= to_roletype(role)
         )
 
-    def _effective_user_role(self, user) -> int:
-        user_level = self.user_roles.filter(user=user).aggregate(Min("level"))[
-            "level__min"
-        ]
-        if user_level == 0:
-            return RoleType.Maintainer
-        group_level = self.group_roles.filter(group__in=user.groups.all()).aggregate(
-            Min("level")
-        )["level__min"]
-        effective = min(user_level or 999, group_level or 999)
+    def effective_level(self, user) -> RoleType:
+        """ Returns user role level, according to his groups. """
+        if user == self.owner:
+            return RoleType.owner
+        try:
+            user_level = self.user_roles.get(user=user).level
+        except UserRole.DoesNotExist:
+            user_level = RoleType.anonymous
+        group_level = (
+            self.group_roles.filter(group__in=user.groups.all()).aggregate(
+                Min("level")
+            )["level__min"]
+            or 999
+        )
+        effective = min(user_level, group_level)
         return to_roletype(effective)
 
-    def _get_permission(self, perm):
-        return f"{perm}_{self._meta.model_name}"
+    def permissions_for(self, *, user: User = None, level: int = None) -> ty.Set[str]:
+        """ Returns all permissions that user/role level has. """
+        if not user and level is None:
+            raise ValueError("Provide user or permissions level")
+        user_level = level if level is not None else self.effective_level(user)
+        result_perms = set()
+        for perm, perms in self._permissions.items():
+            if user_level <= to_roletype(perm):
+                # perms may be one string insead of set
+                if isinstance(perms, str):
+                    result_perms.add(perms)
+                else:
+                    result_perms.update(perms)
+        return result_perms
 
-    def give_access(self, user, permission):
-        permission = self._get_permission(permission)
-        log.debug("Assigning permission %s", permission)
-        return UserObjectPermission.objects.assign_perm(permission, user, self)
-        # return user.user_permissions.add(permission, self)
+    def has_permission(self, user: User, permission: str) -> bool:
+        """ Checks if user has required permission. """
+        return (
+            self.owner == user
+            or user.is_superuser
+            or permission in self.permissions_for(user=user)
+        )

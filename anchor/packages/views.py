@@ -1,9 +1,10 @@
-from django.contrib.auth import get_user_model
-from django.contrib.auth.mixins import LoginRequiredMixin
-from django.urls import reverse
-from django.views.generic import DetailView, ListView, RedirectView, UpdateView
+from django.views.generic import ListView
+from django.shortcuts import get_object_or_404
 
 from .models import Package
+from ..users.models import PermissionAware
+from ..exceptions import LoginRedirect, Forbidden
+from ..users.auth import DetailView, AccessMixin
 
 
 class Index(ListView):
@@ -17,19 +18,29 @@ class Index(ListView):
         """
         if self.request.user.is_authenticated:
             return self.model.objects.filter(owner=self.request.user)
-        else:
-            return self.model.objects.filter(public=True)
+        return self.model.objects.filter(public=True)
 
 
 class PackageDetail(DetailView):
     model = Package
     template_name = "packages/detail.html"
-
-    def get_object(self):
-        package = self.model.objects.get(id=self.kwargs["id"])
-        return package
+    pk_url_kwarg = "id"
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        # context["rights"] =
+        role = None
+        if self.request.user and isinstance(self.object, PermissionAware):
+            role = self.object.effective_level(self.request.user)
+            context["role"] = getattr(role, "name", None)
+            context["role_level"] = int(role)
+            context["permissions"] = self.object.permissions_for(level=role)
+            context["files"] = self.object.files[:10]
+
         return context
+
+
+class FilesDetail(ListView, AccessMixin):
+    def get_queryset(self):
+        package = get_object_or_404(Package, id=self.kwargs["id"])
+        self.check_access(package, "read")
+        return package.files

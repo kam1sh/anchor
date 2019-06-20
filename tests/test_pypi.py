@@ -134,7 +134,9 @@ def test_upload(upload, users):
     print(response.content)
     assert response == 200
     assert PackageFile.objects.all()
-    assert PackageFile.objects.get().path.exists(), "File does not exists!"
+    file = PackageFile.objects.get()
+    assert file.path.exists(), "File does not exists!"
+    assert file.size
     assert upload(login="test2@localhost", password="123") == 200
     assert upload(login="test2", password="123") == 200
 
@@ -143,6 +145,12 @@ def test_download(file, client):
     assert client.get(f"/py/download/{file.filename}") == 200
     file.package.refresh_from_db()
     assert file.package.downloads == 1
+
+
+def test_download_private(file, client):
+    file.package.public = False
+    file.package.save()
+    assert client.get(f"/py/download/{file.filename}") != 200
 
 
 def test_search(file, client):

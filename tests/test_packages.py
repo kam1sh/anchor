@@ -3,6 +3,8 @@ import pytest
 from anchor import exceptions
 from anchor.packages import models
 
+from anchor.users.models import RoleType
+
 
 @pytest.mark.unit
 def test_reader(tempfile):
@@ -37,7 +39,6 @@ def test_keep(packages):
 
 def test_owner_upload(packages, users):
     packages.new_file()
-    packages.new_file(version="0.2.0")
     user = users.new("test2@localhost")
     with pytest.raises(exceptions.Forbidden):
         packages.new_file(user=user, version="0.3.0")
@@ -45,8 +46,15 @@ def test_owner_upload(packages, users):
 
 def test_upload_permissions(packages, users):
     usr = users.new("test2@localhost")
-    file = packages.new_file()
-    usr.give_access(file.package, role="developer")
-    usr.save()
+    file = packages.new_file(version="0.1.0")
+    package = file.package
+    usr.give_access(package, role="developer")
+    # usr.save()
+    level = package.effective_level(usr)
+    assert level == RoleType.developer
+    assert package.permissions_for(level=level)
+    assert not package.has_permission(usr, "remove_files")
+    with pytest.raises(exceptions.Forbidden):
+        packages.new_file(user=usr, version="0.1.0")
+        pytest.fail("User reuploaded file")
     packages.new_file(user=usr, version="0.2.0")
-    # assert upload(auth="test2@localhost:123", version="0.2.0") == 200
