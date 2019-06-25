@@ -6,5 +6,5 @@ app_name = "packages"
 
 urlpatterns = [
     path("<int:id>/", views.PackageDetail.as_view(), name="details"),
-    # path("<int:id>/files")
+    path("<int:id>/files", views.ListFiles.as_view(), name="files"),
 ]

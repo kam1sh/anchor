@@ -45,9 +45,10 @@ class Package(PermissionAware):
     name = models.CharField(max_length=64, db_index=True)
     version = models.CharField("Latest version", max_length=64)
     summary = models.TextField(null=True)
-    updated = models.DateTimeField("Last updated")
+    # various package attributes, set as JSON
+    _attrs = models.TextField(default="{}")
     # updated with the new package version
-    description = models.TextField("Description", null=True)
+    updated = models.DateTimeField("Last updated")
     downloads = models.IntegerField("Downloads count", default=0)
     public = models.BooleanField("Package visible to all", default=True)
 
@@ -56,15 +57,6 @@ class Package(PermissionAware):
         "developer": "upload",
         "guest": "read",
     }
-
-    def has_permission(self, user, permission):
-        if permission == "read" and self.public:
-            return True
-        return super().has_permission(user, permission)
-
-    @property
-    def files(self):
-        return PackageFile.objects.filter(package=self)
 
     class Meta:
         unique_together = ["pkg_type", "name"]
@@ -75,13 +67,24 @@ class Package(PermissionAware):
         if metadata:
             self.from_metadata(metadata)
 
+    def has_permission(self, user, permission):
+        if permission == "read" and self.public:
+            return True
+        return super().has_permission(user, permission)
+
     def from_metadata(self, metadata):
         """Updates package info from pkg_file metadata."""
         self.name = metadata.name
         self.version = metadata.version
         self.summary = metadata.summary
-        self.description = metadata.description
         self.update_time()
+
+    @property
+    def files(self):
+        return PackageFile.objects.filter(package=self)
+
+    def stats(self):
+        return self.files.aggregate(count=models.Count("*"), size=models.Sum("size"))
 
     def update_time(self):
         self.updated = timezone.now()
@@ -152,7 +155,7 @@ class PackageFile(models.Model):
     fileobj = models.FileField()
     size = models.IntegerField()
     version = models.CharField(max_length=64)
-    uploaded = models.DateTimeField()
+    uploaded = models.DateTimeField("Upload date")
 
     def update(self, src: ChunkedReader, metadata):
         self.fileobj.save(src.name, src, save=False)

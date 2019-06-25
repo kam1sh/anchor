@@ -39,7 +39,7 @@ class User(AbstractUser):
         obj.user_roles.add(role_obj)
 
     def __str__(self):
-        return self.email
+        return self.username
 
 
 class RoleType(enum.IntEnum):

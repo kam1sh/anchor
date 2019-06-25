@@ -1,4 +1,6 @@
 {% extends 'base.html' %}
+{% load humanize %}
+{% load more_human %}
 {% block title %}{{ object.name }} details{% endblock %}
 
 {% block container %}
@@ -12,36 +14,30 @@
     </nav>
     <main class="col-md-9 ml-sm-auto col-lg-10 px-4">
 
-        <p>{{ object.description }}</p>
+        <div style="text-align: center">
+            <h5>
+                <strong>{{ object.name }}</strong>
+                {% if object.public %}
+                <i class="fas fa-globe-americas" title="Public package"></i>
+                {% else %}
+                {% endif %}
+            </h5>
+            <p>Updated {{ object.updated|naturalday }}</p>
+            <p>Owned by <a href="{{ object.owner.get_absolute_url }}">{{ object.owner }}</a></p>
+            <p>
+                <i class="far fa-file-archive"></i> <strong>{{stats.count|intcomma}}</strong> files
+                <i class="fas fa-archive"></i> <strong>{{stats.size|naturalsize}}</strong>
+                <i class=""></i>
+            </p>
+        </div>
+        <p>{{ object.summary }}</p>
         <hr>
         <h3>Latest files</h3>
         {% if files %}
-        <table class="table">
-            <thead>
-                <th>Filename</th>
-                <th>Version</th>
-                <th>Size</th>
-                <th>Upload date</th>
-            </thead>
-            <tbody>
-            {% for file in files %}
-            <tr>
-                <td><a href="{% url 'pypi.download' file.filename %}">{{ file.filename }}</a></td>
-                <td>{{ file.version }}</td>
-                <td>{{ file.size }}</td>
-                <td>{{ file.uploaded }}</td>
-            </tr>
-            {% endfor %}
-            </tbody>
-        </table>
+        {{ files_table }}
         {% else %}
         <p>Package has no files.</p>
         {% endif %}
-        {% comment %} <div class="list-group">
-            <div class="list-group-item">
-                <h5>{{ file.filename }}</h5>
-            </div>
-        </div> {% endcomment %}
     </main>
 </div>
 {% endblock container %}

@@ -1,10 +1,13 @@
 from django.views.generic import ListView
-from django.shortcuts import get_object_or_404
+from django.shortcuts import get_object_or_404, reverse
+
+import humanize
 
 from .models import Package
 from ..users.models import PermissionAware
 from ..exceptions import LoginRedirect, Forbidden
 from ..users.auth import DetailView, AccessMixin
+from ..common import html
 
 
 class Index(ListView):
@@ -28,18 +31,33 @@ class PackageDetail(DetailView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        role = None
         if self.request.user and isinstance(self.object, PermissionAware):
-            role = self.object.effective_level(self.request.user)
-            context["role"] = getattr(role, "name", None)
-            context["role_level"] = int(role)
-            context["permissions"] = self.object.permissions_for(level=role)
-            context["files"] = self.object.files[:10]
-
+            # role = self.object.effective_level(self.request.user)
+            # context["role"] = getattr(role, "name", None)
+            # context["role_level"] = int(role)
+            # context["permissions"] = self.object.permissions_for(level=role)
+            files = self.object.files.order_by("uploaded")[:10]
+            context["files"] = files
+            context["files_table"] = FilesTable(
+                files, ["filename", "version", "size", "uploaded"]
+            )
+            context["stats"] = self.object.stats()
         return context
 
 
-class FilesDetail(ListView, AccessMixin):
+class FilesTable(html.Table):
+    def rows(self):
+        for row in super().rows():
+            link = '<a href="{}">{}</a>'.format(
+                reverse("pypi.download", args=[row[0]]), row[0]
+            )
+            row[0] = link
+            row[2] = humanize.naturalsize(row[2])
+            row[3] = humanize.naturalday(row[3])
+            yield row
+
+
+class ListFiles(ListView, AccessMixin):
     def get_queryset(self):
         package = get_object_or_404(Package, id=self.kwargs["id"])
         self.check_access(package, "read")

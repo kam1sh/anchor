@@ -122,4 +122,7 @@ class PackageFile(base_models.PackageFile):
         return self.filename
 
     def __getattr__(self, name):
-        return getattr(self.metadata, name)
+        try:
+            return getattr(self.metadata, name)
+        except AttributeError:
+            raise AttributeError(name) from None
