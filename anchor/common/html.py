@@ -29,8 +29,8 @@ class Flatter:
         for item in self._items:
             if isinstance(item, str):
                 yield item
-            elif isinstance(item, ty.Iterable):
-                yield from Flatter(obj=item, sep=self.sep)
+            elif hasattr(item, "__iter__"):
+                yield from map(str, item)
             else:
                 yield str(item)
 
@@ -149,4 +149,4 @@ class RowFormatter:
         return [getattr(self.item, f) for f in self.fields]
 
     def __str__(self):
-        return Flatter("<tr>", self.cols(), "<tr>")
+        return ("<tr>", self.cols(), "<tr>")
