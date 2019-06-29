@@ -58,3 +58,9 @@ def test_upload_permissions(packages, users):
         packages.new_file(user=usr, version="0.1.0")
         pytest.fail("User reuploaded file")
     packages.new_file(user=usr, version="0.2.0")
+
+
+def test_views(packages, client):
+    packages.new_file(version="0.1.0")
+    soup = client.get("/").soup
+    assert not soup.find("a", href=""), "Package link broken"

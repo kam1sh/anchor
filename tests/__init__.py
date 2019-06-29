@@ -3,6 +3,7 @@ import random
 import typing as ty
 from pathlib import Path
 
+import bs4
 import pytest
 from django.conf import settings
 from django.core.files import File
@@ -14,7 +15,7 @@ from django.test import TestCase as django_testcase
 from anchor.packages import services
 from anchor.packages.models import Metadata, Package, PackageFile, PackageTypes
 
-__all__ = ["Client, RequestFactory, basic_auth"]
+__all__ = ["Client", "RequestFactory", "basic_auth"]
 
 
 class Client(django_client):
@@ -79,6 +80,10 @@ class Response:
         >>> assert "<HTML>" in resp
         """
         return value in str(self)
+
+    @property
+    def soup(self):
+        return bs4.BeautifulSoup(str(self), "html.parser")
 
     def __repr__(self):
         return "{}({})".format(self.__class__.__name__, self.status_code)

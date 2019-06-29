@@ -155,7 +155,7 @@ class PackageFile(models.Model):
     fileobj = models.FileField()
     size = models.IntegerField()
     version = models.CharField(max_length=64)
-    uploaded = models.DateTimeField("Upload date")
+    uploaded = models.DateTimeField("Uploaded")
 
     def update(self, src: ChunkedReader, metadata):
         self.fileobj.save(src.name, src, save=False)

@@ -29,6 +29,10 @@
     form {
         max-width: 400px;
     }
+
+    .centered {
+        justify-content: center;
+    }
     {% comment %} #id-selector {% endcomment %}
     {% block extra-css %}{% endblock %}
     </style>
@@ -102,7 +106,7 @@
                 {% for package in package_list %}
                 <li class="list-group-item">
                     <div class="d-flex w-100 justify-content-between">
-                        <a href="{{ package.details_url }}">
+                        <a href="{{ package.detail_url }}">
                             <h4 class="list-group-item-heading">{{ package }}</h4>
                         </a>
                         <small class="text-muted">{{ package.downloads | intcomma }} downloads</small>

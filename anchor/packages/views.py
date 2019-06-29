@@ -38,14 +38,14 @@ class PackageDetail(DetailView):
             # context["permissions"] = self.object.permissions_for(level=role)
             files = self.object.files.order_by("uploaded")[:10]
             context["files"] = files
-            context["files_table"] = FilesTable(
-                files, ["filename", "version", "size", "uploaded"]
-            )
+            context["files_table"] = FilesTable(files, paginate=False)
             context["stats"] = self.object.stats()
         return context
 
 
 class FilesTable(html.Table):
+    fields = ["filename", "version", "size", "uploaded"]
+
     def rows(self):
         for row in super().rows():
             link = '<a href="{}">{}</a>'.format(
@@ -58,7 +58,17 @@ class FilesTable(html.Table):
 
 
 class ListFiles(ListView, AccessMixin):
+    package = None
+    allow_empty = True
+
     def get_queryset(self):
         package = get_object_or_404(Package, id=self.kwargs["id"])
+        self.package = package
         self.check_access(package, "read")
         return package.files
+
+    def get_context_data(self, *, object_list=None, **kwargs):
+        context = super().get_context_data(object_list=object_list, **kwargs)
+        context["package"] = self.package
+        context["table"] = FilesTable(self.object_list, request=self.request)
+        return context

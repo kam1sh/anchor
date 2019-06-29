@@ -5,9 +5,3 @@ class UsersAppConfig(AppConfig):
 
     name = "anchor.users"
     verbose_name = "Users"
-
-    def ready(self):
-        try:
-            import users.signals  # noqa F401
-        except ImportError:
-            pass
