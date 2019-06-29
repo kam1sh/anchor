@@ -30,7 +30,7 @@ class Flatter:
             if isinstance(item, str):
                 yield item
             elif hasattr(item, "__iter__"):
-                yield from map(str, item)
+                yield from Flatter(obj=item)
             else:
                 yield str(item)
 
