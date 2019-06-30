@@ -6,15 +6,17 @@
 {% block container %}
 <h2>{% block page_title %}{{ object.name }}{% endblock %}</h2>
 <div class="row">
-    <nav class="nav flex-column col-md-2 d-none d-md-block bg-light sidebar">
-        <a class="nav-link" href="{{ package.detail_url }}">Overview</a>
-        <a class="nav-link" href="{% url 'packages:files' package.id %}">Files</a>
-        <a class="nav-link" href="#">Settings</a>
-        <a class="nav-link" href="#">Permissions</a>
-    </nav>
+    <div class="col">
+        <nav class="nav nav-tabs nav-sidetabs flex-column">
+            <a class="nav-link nowrap active" href="{{ package.detail_url }}">Overview</a>
+            <a class="nav-link nowrap" href="{% url 'packages:files' package.id %}">Files</a>
+            <a class="nav-link nowrap" href="#">Settings</a>
+            <a class="nav-link nowrap" href="#">Permissions</a>
+        </nav>
+    </div>
     <main class="col-sm-10">
         {% block data %}
-        <div style="text-align: center">
+        <div class="centered">
             <h5>
                 <strong>{{ object.name }}</strong>
                 {% if object.public %}

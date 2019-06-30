@@ -1,7 +1,7 @@
 {% load static i18n %}
 {% load humanize %}
 <!DOCTYPE html>
-<html lang="en">
+<html class="h-100" lang="en">
 
 <head>
     <meta charset="utf-8">
@@ -12,34 +12,14 @@
     <meta name="author" content="">
 
     <link rel="icon" href="{% static 'images/favicons/favicon.ico' %}">
+    <!-- css of awesome fonts -->
     <link rel="stylesheet" href="{% static 'fonts/css/all.min.css' %}">
 
-    {% block css %}
-    <!-- Latest compiled and minified Bootstrap CSS -->
     <link href="{% static 'css/bootstrap.min.css' %}" rel="stylesheet">
-
-    <!-- This file stores project-specific CSS -->
     <link href="{% static 'css/project.css' %}" rel="stylesheet">
-    {% endblock %}
-    <style>
-    .asteriskField {
-        display: none;
-    }
-    
-    form {
-        max-width: 400px;
-    }
-
-    .centered {
-        justify-content: center;
-    }
-    {% comment %} #id-selector {% endcomment %}
-    {% block extra-css %}{% endblock %}
-    </style>
-
 </head>
 
-<body>
+<body class="d-flex flex-column h-100">
 
     <nav class="navbar navbar-expand-md navbar-light">
         <button class="navbar-toggler navbar-toggler-right" type="button" data-toggle="collapse"
@@ -64,9 +44,6 @@
                         <a class="dropdown-item" href="#">Starred packages</a>
                         <a class="dropdown-item" href="#">Explore packages</a>
                     </div>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="{% url 'about' %}">About</a>
                 </li>
                 {% if request.user.is_authenticated %}
                 <li class="nav-item">
@@ -124,10 +101,24 @@
             </ul>
             {% endif %}
         {% endblock container %}
-
-    </div> <!-- /container -->
+    </div>
 
     {% block content %}{% endblock %}
+
+
+    <footer class="footer pt-4 text-white">
+        <div class="container">
+            <div class="d-flex align-items-center">
+            <div>
+                <div>Powered by Anchor 0.2.0</div>
+                <div>
+                    <a href="#">Documentation</a>
+                    •
+                    <a href="{% url 'about' %}">About</a>
+                </div>
+            </div>
+        </div>
+    </footer>
 
     <!-- Placed at the end of the document so the pages load faster -->
     <!-- Bootstrap JS and its dependencies-->
@@ -139,5 +130,4 @@
     <script src="{% static 'js/project.js' %}"></script>
     {% endblock javascript %}
 </body>
-
 </html>
