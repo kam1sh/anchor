@@ -24,6 +24,10 @@ form {
     text-align: center;
 }
 
+.navbar {
+    border-bottom: 1px solid #ddd;
+}
+
 .nav-sidetabs {
     height: 100%;
     border-right: 1px solid #ddd;

@@ -2,9 +2,11 @@
 import itertools
 import typing as ty
 
-from django.core.paginator import Paginator, Page
+from django.core.paginator import Paginator, Page, EmptyPage
 from django.shortcuts import reverse
 from django.utils.safestring import mark_safe
+from django.views.generic.base import ContextMixin
+from .. import exceptions
 
 __all__ = ["Table", "RowFormatter"]
 
@@ -38,7 +40,15 @@ class Flatter:
         return self.sep.join(self)
 
 
-class Table:
+class HtmlBase:
+    def html(self) -> str:
+        return ""
+
+    def __str__(self):
+        return mark_safe(str(self.html()))
+
+
+class Table(HtmlBase):
     """
     Formatter that renders ResultSet
     as a Bootstrap table.
@@ -77,7 +87,10 @@ class Table:
         if not objects.ordered:
             objects = objects.order_by("id")
         self.paginator = Paginator(objects, per_page=self.size)
-        self.page = self.paginator.page(page_num)
+        try:
+            self.page = self.paginator.page(page_num)
+        except EmptyPage:
+            raise exceptions.NotFound() from None
         return self.page
 
     def head(self) -> ty.Iterator[str]:
@@ -116,37 +129,53 @@ class Table:
         items = ["page {} of {}".format(page.number, self.paginator.num_pages)]
         a_icon = '<a href="%s?page={}">{}</a>' % self._get_reverse()
         if page.has_previous():
-            items.insert(0, a_icon.format(page.number, "prev"))
+            items.insert(0, a_icon.format(page.number - 1, "prev"))
         if page.has_next():
-            items.append(a_icon.format(page.number, "next"))
-        return Flatter('<div class="row centered">', items, "</div>", sep="")
+            items.append(a_icon.format(page.number + 1, "next"))
+        return Flatter(
+            '<div class="row centered"><p>', " ".join(items), "</p></div>", sep=""
+        )
 
-    def __str__(self):
+    def html(self):
         if self.objects:
             table = ['<table class="table">', self._head(), self._body(), "</table>"]
             if self.paginator:
                 table.append(self.page_info())
-            out = str(Flatter(obj=table))
+            return Flatter(obj=table)
         else:
-            out = '<p style="align: center;">{}</p>'.format(str(self.empty_msg))
-        return mark_safe(out)
+            return '<p style="align: center;">{}</p>'.format(str(self.empty_msg))
 
 
-class PageInfo:
-    def __init__(self, page):
-        self.page = page
+class Sidebar(HtmlBase):
+    row = '<a class="nav-link nowrap %s" href="%s">%s</a>'
 
-    def __str__(self):
-        return Flatter("<p>", "</p>")
+    def __init__(self, active_num: int, obj):
+        self.active = active_num
+
+    def items(self) -> ty.Iterable[ty.Tuple[str, str]]:
+        return []
+
+    def _items(self):
+        for i, (url, name) in enumerate(self.items()):
+            active = "active" if i == self.active else ""
+            yield self.row % (active, url, name)
+
+    def html(self):
+        return Flatter(
+            '<nav class="nav nav-tabs nav-sidetabs flex-column">',
+            self._items(),
+            "</nav>",
+        )
 
 
-class RowFormatter:
-    def __init__(self, item, fields: ty.Iterable[str]):
-        self.item = item
-        self.fields = fields
+class SidebarMixin(ContextMixin):
+    sidebar = Sidebar
+    sidebar_active = 0
 
-    def cols(self) -> list:
-        return [getattr(self.item, f) for f in self.fields]
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        self._add_sidebar(context)
+        return context
 
-    def __str__(self):
-        return ("<tr>", self.cols(), "<tr>")
+    def _add_sidebar(self, context):
+        context["sidebar"] = self.sidebar(self.sidebar_active, getattr(self, "object"))

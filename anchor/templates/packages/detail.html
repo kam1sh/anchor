@@ -6,14 +6,7 @@
 {% block container %}
 <h2>{% block page_title %}{{ object.name }}{% endblock %}</h2>
 <div class="row">
-    <div class="col">
-        <nav class="nav nav-tabs nav-sidetabs flex-column">
-            <a class="nav-link nowrap active" href="{{ package.detail_url }}">Overview</a>
-            <a class="nav-link nowrap" href="{% url 'packages:files' package.id %}">Files</a>
-            <a class="nav-link nowrap" href="#">Settings</a>
-            <a class="nav-link nowrap" href="#">Permissions</a>
-        </nav>
-    </div>
+    <div class="col">{{ sidebar }}</div>
     <main class="col-sm-10">
         {% block data %}
         <div class="centered">

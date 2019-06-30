@@ -61,6 +61,10 @@ def test_upload_permissions(packages, users):
 
 
 def test_views(packages, client):
-    packages.new_file(version="0.1.0")
+    file = packages.new_file(version="0.1.0")
     soup = client.get("/").soup
     assert not soup.find("a", href=""), "Package link broken"
+    soup = client.get(file.package.detail_url()).soup
+    sidebar = soup.find("nav", class_="nav-sidetabs")
+    assert sidebar
+    assert len(sidebar.find_all("a")) == 4

@@ -1,13 +1,29 @@
-from django.views.generic import ListView
+from django.views.generic import View, ListView
 from django.shortcuts import get_object_or_404, reverse
 
 import humanize
 
 from .models import Package
-from ..users.models import PermissionAware
-from ..exceptions import LoginRedirect, Forbidden
 from ..users.auth import DetailView, AccessMixin
 from ..common import html
+
+
+class PackageSidebar(html.Sidebar):
+    def __init__(self, active_num, pkg):
+        super().__init__(active_num, pkg)
+        self.pkg = pkg
+
+    def items(self):
+        return [
+            (self.pkg.detail_url(), "Overview"),
+            (reverse("packages:files", args=[self.pkg.id]), "Files"),
+            ("#", "Settings"),
+            ("#", "Permissions"),
+        ]
+
+
+class SidebarSupport(html.SidebarMixin):
+    sidebar = PackageSidebar
 
 
 class Index(ListView):
@@ -24,22 +40,23 @@ class Index(ListView):
         return self.model.objects.filter(public=True)
 
 
-class PackageDetail(DetailView):
+class PackageDetail(DetailView, SidebarSupport):
     model = Package
     template_name = "packages/detail.html"
     pk_url_kwarg = "id"
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        if self.request.user and isinstance(self.object, PermissionAware):
-            # role = self.object.effective_level(self.request.user)
-            # context["role"] = getattr(role, "name", None)
-            # context["role_level"] = int(role)
-            # context["permissions"] = self.object.permissions_for(level=role)
-            files = self.object.files.order_by("uploaded")[:10]
-            context["files"] = files
-            context["files_table"] = FilesTable(files, paginate=False)
-            context["stats"] = self.object.stats()
+        # if self.request.user and isinstance(self.object, PermissionAware):
+        # role = self.object.effective_level(self.request.user)
+        # context["role"] = getattr(role, "name", None)
+        # context["role_level"] = int(role)
+        # context["permissions"] = self.object.permissions_for(level=role)
+        files = self.object.files.order_by("uploaded")[:10]
+        context["files"] = files
+        context["files_table"] = FilesTable(files, paginate=False)
+        context["stats"] = self.object.stats()
+        self._add_sidebar(context)
         return context
 
 
@@ -57,9 +74,10 @@ class FilesTable(html.Table):
             yield row
 
 
-class ListFiles(ListView, AccessMixin):
+class ListFiles(ListView, AccessMixin, SidebarSupport):
     package = None
     allow_empty = True
+    sidebar_active = 1
 
     def get_queryset(self):
         package = get_object_or_404(Package, id=self.kwargs["id"])
@@ -69,6 +87,7 @@ class ListFiles(ListView, AccessMixin):
 
     def get_context_data(self, *, object_list=None, **kwargs):
         context = super().get_context_data(object_list=object_list, **kwargs)
-        context["package"] = self.package
+        context["object"] = self.package
         context["table"] = FilesTable(self.object_list, request=self.request)
+        self._add_sidebar(context)
         return context

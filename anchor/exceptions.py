@@ -1,4 +1,4 @@
-from django.http import HttpResponse
+from django.http import HttpResponse, Http404 as NotFound
 
 
 class AnchorException(Exception):
