@@ -15,7 +15,7 @@ def test_reader(tempfile):
     file = tempfile("file", size_kb=1024).open("rb")
     reader = models.ChunkedReader(file, max_size_kb=1025)
     assert reader.max_size == 1025 * 1024
-    reader.run()
+    all(reader)
 
 
 def test_new_file(packages):

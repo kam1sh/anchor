@@ -89,6 +89,8 @@ class Response:
         return "{}({})".format(self.__class__.__name__, self.status_code)
 
     def __str__(self):
+        if self.orig.streaming:
+            return "<streaming content>"
         return str(self.orig.content.decode())
 
 

@@ -15,6 +15,7 @@
                 {% if object.public %}
                 <i class="fas fa-globe-americas" title="Public package"></i>
                 {% else %}
+                <i class="fas fa-lock" title="Private package"></i>
                 {% endif %}
             </h5>
             <p>Updated {{ object.updated|naturalday }}</p>

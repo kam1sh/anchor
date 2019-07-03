@@ -1,6 +1,5 @@
 import logging
 
-import bs4
 import pytest
 
 from anchor.users.models import User

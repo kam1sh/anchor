@@ -76,9 +76,6 @@ class ShaReader(base_models.ChunkedReader):
                 f"Form checksum does not match checksum from the file {self.sha256}"
             )
 
-    def __getattr__(self, name):
-        return getattr(self.src, name)
-
 
 class PackageFile(base_models.PackageFile):
     dist_type = models.CharField(max_length=16)

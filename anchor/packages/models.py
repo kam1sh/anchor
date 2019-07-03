@@ -120,10 +120,6 @@ class ChunkedReader:
         self.size = 0
         self.max_size = max_size_kb * 1024
 
-    def run(self):
-        for _ in self:
-            pass
-
     def __iter__(self):
         yield from iter(lambda: self.read(2048), b"")
 
@@ -159,6 +155,8 @@ class PackageFile(models.Model):
 
     def update(self, src: ChunkedReader, metadata):
         self.fileobj.save(src.name, src, save=False)
+        if src.size is 0:
+            raise IOError("Storage didn't read the file (empty?)")
         log.debug("Saved file (%s bytes) to %s", src.size, self.path)
         self.filename = Path(src.name).name
         self.size = src.size

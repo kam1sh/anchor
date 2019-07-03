@@ -108,7 +108,7 @@ class PermissionAware(models.Model):
     class Meta:
         abstract = True
 
-    def has_role(self, user, role: RoleLike) -> bool:
+    def has_role(self, user: User, role: RoleLike) -> bool:
         """ Checks if user has a role. """
         log.debug("owner: %r, user: %r", self.owner, user)
         return (
@@ -117,8 +117,10 @@ class PermissionAware(models.Model):
             or self.effective_level(user) <= to_roletype(role)
         )
 
-    def effective_level(self, user) -> RoleType:
+    def effective_level(self, user: User) -> RoleType:
         """ Returns user role level, according to his groups. """
+        if user.id is None:
+            return RoleType.anonymous
         if user == self.owner:
             return RoleType.owner
         try:
@@ -138,7 +140,9 @@ class PermissionAware(models.Model):
         """ Returns all permissions that user/role level has. """
         if not user and level is None:
             raise ValueError("Provide user or permissions level")
-        user_level = level if level is not None else self.effective_level(user)
+        user_level = (
+            level if level is not None else self.effective_level(user)  # type: ignore
+        )
         result_perms = set()
         for perm, perms in self._permissions.items():
             if user_level <= to_roletype(perm):

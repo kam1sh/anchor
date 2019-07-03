@@ -141,14 +141,18 @@ def test_upload(upload, users):
 
 
 def test_download(file, client):
-    assert client.get(f"/py/download/{file.filename}") == 200
+    response = client.get(f"/py/download/{file.filename}")
+    print(response)
+    assert response == 200
     file.package.refresh_from_db()
     assert file.package.downloads == 1
 
 
-def test_download_private(file, client):
+def test_download_private(users, file, client):
+    user = users.new(email="test2@localhost")
     file.package.public = False
     file.package.save()
+    assert file.package.effective_level(user) == 999
     assert client.get(f"/py/download/{file.filename}") != 200
 
 

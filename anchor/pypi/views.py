@@ -14,7 +14,7 @@ from django.shortcuts import get_object_or_404, render
 from django.views.decorators import csrf
 
 from ..common.views import basic_auth
-from ..exceptions import UserError
+from ..exceptions import UserError, Forbidden
 from . import services
 from .models import Metadata, PackageFile, Project
 
@@ -69,6 +69,8 @@ def list_files(request, name: str):
 
 def download_file(request, filename: str):
     pkg_file = get_object_or_404(PackageFile, filename=filename)
+    if not pkg_file.package.has_permission(request.user, "read"):
+        raise Forbidden
     pkg_file.package.downloads += 1
     pkg_file.package.save()
     return http.FileResponse(pkg_file.fileobj)
