@@ -70,3 +70,8 @@ def test_table_benchmark(benchmark, users, db):
         users.new(f"usr{i}")
     table = UsersTable(paginate=False)
     benchmark(table.__str__)
+
+
+def test_dropdowns():
+    dropdown = html.DropdownButtons(None, "Test", {"Link A": "#", "Link B": "#"})
+    assert dropdown.html()

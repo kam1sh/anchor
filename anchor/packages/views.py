@@ -56,7 +56,6 @@ class PackageDetail(DetailView, SidebarSupport):
         context["files"] = files
         context["files_table"] = FilesTable(files, paginate=False)
         context["stats"] = self.object.stats()
-        self._add_sidebar(context)
         return context
 
 
@@ -74,20 +73,36 @@ class FilesTable(html.Table):
             yield row
 
 
+class FilesActionsTable(FilesTable):
+    fields = FilesTable.fields + [""]
+
+    def rows(self):
+        for row in super().rows():
+            row.append(
+                html.DropdownButtons(
+                    parent=row,
+                    button="Actions",
+                    contents={"delete": "#", "rename": "#"},
+                )
+            )
+            yield row
+
+
 class ListFiles(ListView, AccessMixin, SidebarSupport):
     package = None
+    object = None
     allow_empty = True
     sidebar_active = 1
 
     def get_queryset(self):
         package = get_object_or_404(Package, id=self.kwargs["id"])
         self.package = package
+        self.object = package
         self.check_access(package, "read")
         return package.files
 
     def get_context_data(self, *, object_list=None, **kwargs):
         context = super().get_context_data(object_list=object_list, **kwargs)
         context["object"] = self.package
-        context["table"] = FilesTable(self.object_list, request=self.request)
-        self._add_sidebar(context)
+        context["table"] = FilesActionsTable(self.object_list, request=self.request)
         return context

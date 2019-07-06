@@ -41,6 +41,9 @@ class Flatter:
 
 
 class HtmlBase:
+    def __init__(self, parent=None):
+        self.parent = parent
+
     def html(self) -> str:
         return ""
 
@@ -147,6 +150,8 @@ class Table(HtmlBase):
 
 
 class Sidebar(HtmlBase):
+    """ Nav element with the vertical sidebar """
+
     row = '<a class="nav-link nowrap %s" href="%s">%s</a>'
 
     def __init__(self, active_num: int, obj):
@@ -169,8 +174,13 @@ class Sidebar(HtmlBase):
 
 
 class SidebarMixin(ContextMixin):
+    """
+    View mixin that provides sidebar object in the template context.
+    """
+
     sidebar = Sidebar
     sidebar_active = 0
+    entity_name = "object"
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -178,4 +188,65 @@ class SidebarMixin(ContextMixin):
         return context
 
     def _add_sidebar(self, context):
-        context["sidebar"] = self.sidebar(self.sidebar_active, getattr(self, "object"))
+        context["sidebar"] = self.sidebar(
+            self.sidebar_active, getattr(self, self.entity_name)
+        )
+
+
+class DropdownButtons(HtmlBase):
+    """ Button with other buttons in the dropdown menu. """
+
+    def __init__(self, parent, button, contents: ty.Mapping, num=0):
+        super().__init__(parent=parent)
+        self.button = button
+        self.contents = contents
+        self.num = num
+        self._group = f"button_grp_{self.num}"
+
+    def _button(self):
+        return "<button %s>%s</button>" % (
+            ElementAttrs(
+                {
+                    "data-toggle": "dropdown",
+                    "class": "btn btn-sm btn-outline-primary",
+                    "button-secondary": "",
+                    "dropdown-toggle": "",
+                    "aria-haspopup": "true",
+                    "aria-expanded": "false",
+                },
+                id="button_grp_%s" % self.num,
+                type="button",
+            ),
+            self.button,
+        )
+
+    def _contents(self):
+        return "".join(
+            '<a class="dropdown-item" href="%s">%s</a>' % (link, name.capitalize())
+            for name, link in self.contents.items()
+        )
+
+    def dropdown_menu(self):
+        return '<div class="dropdown-menu" aria-labelledby="%s">%s</div>' % (
+            self._group,
+            self._contents(),
+        )
+
+    def html(self):
+        return '<div class="btn-group">%s%s</div>' % (
+            self._button(),
+            self.dropdown_menu(),
+        )
+
+
+class ElementAttrs:
+    """
+    Collection of HTML element attributes, such as id, class, etc.
+    """
+
+    def __init__(self, mapping=None, **kwargs):
+        kwargs.update(mapping or {})
+        self.items = kwargs
+
+    def __str__(self):
+        return " ".join('%s="%s"' % x for x in self.items.items())

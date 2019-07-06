@@ -165,7 +165,7 @@ def test_search(file, client):
 
 
 def test_lists(file, client):
-    """ Lists of packages/files """
+    """ Tests of PyPI Simple API views. """
     name = file.name
     resp = client.get("/py/simple/")
     assert resp == 200
