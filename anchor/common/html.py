@@ -2,13 +2,12 @@
 import itertools
 import typing as ty
 
-from django.core.paginator import Paginator, Page, EmptyPage
+from django.core.paginator import EmptyPage, Page, Paginator
 from django.shortcuts import reverse
 from django.utils.safestring import mark_safe
 from django.views.generic.base import ContextMixin
-from .. import exceptions
 
-__all__ = ["Table", "RowFormatter"]
+from .. import exceptions
 
 
 def tag(tag, obj):
@@ -107,10 +106,17 @@ class Table(HtmlBase):
             yield tag("th", row)
         yield "</thead>"
 
+    class _Row(list):
+        def __init__(self, row, item):
+            super().__init__(row)
+            self.item = item
+
     def rows(self) -> ty.Iterator[ty.List[str]]:
         """ Yields rows. """
         for item in self.objects:
-            yield [getattr(item, field.name) for field in self.model_fields]
+            yield self._Row(
+                (getattr(item, field.name) for field in self.model_fields), item
+            )
 
     def _body(self) -> ty.Iterable:
         yield "<tbody>"
@@ -239,14 +245,14 @@ class DropdownButtons(HtmlBase):
         )
 
 
-class ElementAttrs:
+class ElementAttrs(dict):
     """
     Collection of HTML element attributes, such as id, class, etc.
     """
 
     def __init__(self, mapping=None, **kwargs):
         kwargs.update(mapping or {})
-        self.items = kwargs
+        super().__init__(**kwargs)
 
     def __str__(self):
-        return " ".join('%s="%s"' % x for x in self.items.items())
+        return " ".join('%s="%s"' % x for x in self.items())

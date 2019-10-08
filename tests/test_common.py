@@ -97,6 +97,24 @@ def test_get_view(requests):
     RequestBinder(req).bind_view(view)
 
 
+@mark.unit
+def test_view_param_underscore(requests):
+    def view(request, id_: int):
+        assert id_ == 1
+
+    req = requests.get(data=dict(id=1))
+    RequestBinder(req).bind_view(view)
+
+
+@mark.unit
+def test_view_no_annotation(requests):
+    def view(request, data):
+        assert data
+
+    req = requests.get(data=dict(data="something"))
+    RequestBinder(req).bind_view(view)
+
+
 def test_dataclass_middleware(requests):
     def view(request, post: DataClass):
         assert isinstance(post, DataClass)

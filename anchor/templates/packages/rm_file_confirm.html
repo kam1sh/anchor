@@ -1,0 +1,16 @@
+{% extends 'packages/detail.html' %}
+{% block title %}{{ object.name }} remove file{% endblock %}
+
+{% block page_title %}Remove file{% endblock page_title %}
+{% block data %}
+
+<div class="centered">
+    <p>Are you sure you want to remove package file <b> {{ file }}</b>?</p>
+
+    <form method="post" action="{% url 'packages:files_rm' file.id %}">
+        {% csrf_token %}
+        <button class="btn btn-danger" type="submit">Remove file</button>
+    </form>
+</div>
+
+{% endblock data %}

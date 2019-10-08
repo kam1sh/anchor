@@ -14,7 +14,7 @@ from .conftest import UserFactory
 
 FORM = {
     "name": "anchor",
-    "version": "0.1.0",
+    "version": "0.2.0",
     "filetype": "sdist",
     "pyversion": "",
     "metadata_version": "2.1",

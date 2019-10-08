@@ -9,4 +9,5 @@ urlpatterns = [
     path("<int:id>/files", views.ListFiles.as_view(), name="files"),
     # path("<int:id>/settings", views.PermissionView)
     # path("<int:id>/permissions", views.PermissionView)
+    path("files/<int:id>/rm", views.FileRemove.as_view(), name="files_rm"),
 ]

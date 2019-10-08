@@ -1,11 +1,13 @@
-from django.views.generic import View, ListView
+from django import http
+from django.views.generic import ListView, DetailView as DjangoDetail
 from django.shortcuts import get_object_or_404, reverse
 
 import humanize
 
-from .models import Package
+from .models import Package, PackageFile
 from ..users.auth import DetailView, AccessMixin
 from ..common import html
+from .. import exceptions
 
 
 class PackageSidebar(html.Sidebar):
@@ -82,7 +84,10 @@ class FilesActionsTable(FilesTable):
                 html.DropdownButtons(
                     parent=row,
                     button="Actions",
-                    contents={"delete": "#", "rename": "#"},
+                    contents={
+                        "delete": reverse("packages:files_rm", args=[row.item.id]),
+                        "rename": "#",
+                    },
                 )
             )
             yield row
@@ -106,3 +111,33 @@ class ListFiles(ListView, AccessMixin, SidebarSupport):
         context["object"] = self.package
         context["table"] = FilesActionsTable(self.object_list, request=self.request)
         return context
+
+
+class FileRemove(DjangoDetail, AccessMixin, SidebarSupport):
+    model = Package
+    template_name = "packages/rm_file_confirm.html"
+    pk_url_kwarg = "id"
+    file = None
+
+    def get_object(self, queryset=None):
+        self.file = PackageFile.objects.get(id=self.kwargs["id"])
+        pkg = self.file.package
+        self.check_access(pkg, "remove_files")
+        return pkg
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["file"] = self.file
+        return context
+
+    def post(self, request, id_):
+        raise Exception("LOH")
+
+
+def download_file(request, filename: str):
+    pkg_file = get_object_or_404(PackageFile, filename=filename)
+    if not pkg_file.package.has_permission(request.user, "read"):
+        raise exceptions.Forbidden
+    pkg_file.package.downloads += 1
+    pkg_file.package.save()
+    return http.FileResponse(pkg_file.fileobj)

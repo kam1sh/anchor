@@ -155,10 +155,8 @@ class RequestBinder:
                 continue
             try:
                 out[field] = convert_arg(value, field_type.annotation)
-            except IndexError:  # empty list - no param provided
-                raise exceptions.UserError(
-                    f"Parameter {field!r} not provided"
-                ) from None
+            except IndexError as e:  # empty list - no param provided
+                raise exceptions.UserError(f"Parameter {field!r} not provided") from e
         return out
 
 
@@ -174,6 +172,8 @@ def iter_params(
     for field, field_type in params.items():
         if field in exclude:
             continue
+        if field.endswith("_"):
+            field = field[:-1]
         value = items.getlist(field)
         yield (field, field_type, value)
 
@@ -183,4 +183,6 @@ def convert_arg(arg: ty.List[str], val_type: ty.Type):
         return arg[0]
     if issubclass(val_type, ty.Iterable):
         return arg
+    if val_type is inspect.Signature.empty:
+        return arg[0]
     return val_type(arg[0])
